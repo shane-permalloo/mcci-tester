@@ -323,7 +323,7 @@ export function AdminDashboard() {
             <button
               onClick={updateBulkTesterStatus}
               disabled={selectedTesters.length === 0 || isProcessing}
-              className="flex items-center space-x-2 px-4 py-1 bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-500 dark:to-orange-500 text-white rounded-md hover:from-yellow-700 hover:to-orange-700 dark:hover:from-yellow-600 dark:hover:to-orange-600 focus:ring-2 focus:ring-yellow-200 dark:focus:ring-yellow-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-2 px-4 py-1 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 text-white rounded-md hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-600 dark:hover:to-purple-600 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isProcessing ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
@@ -494,6 +494,7 @@ export function AdminDashboard() {
     </div>
   );
 }
+
 
 
 

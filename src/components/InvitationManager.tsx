@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Send, ExternalLink, Smartphone, AlertCircle, CheckCircle } from 'lucide-react';
+import { Send, ExternalLink, Smartphone, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
+import { sendEmail, generateInvitationEmailContent } from '../services/emailService';
 
 type BetaTester = Database['public']['Tables']['beta_testers']['Row'];
 type BetaInvitation = Database['public']['Tables']['beta_invitations']['Row'];
@@ -21,12 +22,30 @@ export function InvitationManager() {
   const [currentInvitationPage, setCurrentInvitationPage] = useState(1);
   const itemsPerPage = 10;
 
+  // Add new state variables
+  const [isGeneratingCSV, setIsGeneratingCSV] = useState(false);
+  const [pushResult, setPushResult] = useState<{
+    success: boolean;
+    platform: string;
+    count: number;
+  } | null>(null);
+
+  // Add a new state variable for tracking email sending
+  const [emailSendingStatus, setEmailSendingStatus] = useState<{
+    total: number;
+    sent: number;
+    failed: number;
+  } | null>(null);
+
   // Define getFilteredTesters function before using it
   const getFilteredTesters = () => {
     return approvedTesters.filter(tester => {
       const platform = selectedPlatform;
-      if (platform === 'google_play' || platform === 'huawei_gallery') {
-        return tester.device_type === 'android' || tester.device_type === 'huawei';
+      if (platform === 'google_play') {
+        return tester.device_type === 'android';
+      }
+      if (platform === 'huawei_gallery') {
+        return tester.device_type === 'huawei';
       }
       if (platform === 'app_store') {
         return tester.device_type === 'ios';
@@ -119,8 +138,15 @@ export function InvitationManager() {
 
     setIsProcessing(true);
     setMessage(null);
+    setEmailSendingStatus({ total: selectedTesters.length, sent: 0, failed: 0 });
 
     try {
+      // Get selected tester data
+      const selectedTesterData = approvedTesters.filter(tester => 
+        selectedTesters.includes(tester.id)
+      );
+      
+      // Create invitation records for database
       const invitationData = selectedTesters.map(testerId => ({
         tester_id: testerId,
         platform: selectedPlatform,
@@ -128,6 +154,7 @@ export function InvitationManager() {
         status: 'sent' as const,
       }));
 
+      // Insert invitations into database
       const { error } = await supabase
         .from('beta_invitations')
         .insert(invitationData);
@@ -141,11 +168,60 @@ export function InvitationManager() {
         .in('id', selectedTesters);
 
       if (updateError) throw updateError;
+      
+      // Send emails to each tester
+      let sentCount = 0;
+      let failedCount = 0;
+      
+      // Get platform display name
+      const platformDisplayName = selectedPlatform === 'google_play' 
+        ? 'Google Play Store' 
+        : selectedPlatform === 'app_store' 
+          ? 'Apple TestFlight' 
+          : 'Huawei AppGallery';
+      
+      // Send emails in sequence to avoid rate limits
+      for (const tester of selectedTesterData) {
+        const invitationLink = generateInvitationLink(selectedPlatform, appId);
+        
+        const emailContent = generateInvitationEmailContent(
+          tester.full_name,
+          platformDisplayName,
+          invitationLink
+        );
+        
+        const emailSent = await sendEmail({
+          to: tester.email,
+          subject: 'You\'re Invited to Join Our Beta Test!',
+          html: emailContent
+        });
+        
+        if (emailSent) {
+          sentCount++;
+        } else {
+          failedCount++;
+        }
+        
+        // Update status after each email
+        setEmailSendingStatus({
+          total: selectedTesters.length,
+          sent: sentCount,
+          failed: failedCount
+        });
+      }
 
-      setMessage({
-        type: 'success',
-        text: `Successfully sent ${selectedTesters.length} invitation(s) to ${selectedPlatform.replace('_', ' ')}.`
-      });
+      // Set final message
+      if (failedCount === 0) {
+        setMessage({
+          type: 'success',
+          text: `Successfully sent ${sentCount} invitation email(s) to testers for ${selectedPlatform.replace('_', ' ')}.`
+        });
+      } else {
+        setMessage({
+          type: 'error',
+          text: `Sent ${sentCount} invitation(s), but failed to send ${failedCount} invitation(s). Please try again for the failed ones.`
+        });
+      }
 
       setSelectedTesters([]);
       await fetchData();
@@ -154,6 +230,99 @@ export function InvitationManager() {
       setMessage({ type: 'error', text: 'Failed to send invitations. Please try again.' });
     } finally {
       setIsProcessing(false);
+      setEmailSendingStatus(null);
+    }
+  };
+
+  // Add new function to generate platform CSV
+  const generatePlatformCSV = async () => {
+    if (selectedTesters.length === 0) {
+      setMessage({ type: 'error', text: 'Please select at least one tester.' });
+      return;
+    }
+
+    setIsGeneratingCSV(true);
+    setMessage(null);
+
+    try {
+      // Get selected testers
+      const selectedTesterData = approvedTesters.filter(tester => 
+        selectedTesters.includes(tester.id)
+      );
+      
+      // Define CSV headers and content based on platform
+      let headers: string[] = [];
+      let csvRows: string[][] = [];
+      
+      switch (selectedPlatform) {
+        case 'google_play':
+          // Google Play format (email only)
+          headers = ['Email'];
+          csvRows = selectedTesterData.map(tester => [tester.email]);
+          break;
+          
+        case 'app_store':
+          // TestFlight format (email, first name, last name)
+          headers = ['Email', 'First Name', 'Last Name'];
+          csvRows = selectedTesterData.map(tester => {
+            // Split full name into first and last name
+            const nameParts = tester.full_name.split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+            
+            return [tester.email, firstName, lastName];
+          });
+          break;
+          
+        case 'huawei_gallery':
+          // Huawei format (email, name)
+          headers = ['Email', 'Name'];
+          csvRows = selectedTesterData.map(tester => [
+            tester.email, 
+            tester.full_name
+          ]);
+          break;
+      }
+      
+      // Generate CSV content
+      const csvContent = [
+        headers.join(','),
+        ...csvRows.map(row => row.join(','))
+      ].join('\n');
+      
+      // Create and download the file
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${selectedPlatform}-testers.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      // Update tester status to 'invited'
+      const { error: updateError } = await supabase
+        .from('beta_testers')
+        .update({ status: 'invited' })
+        .in('id', selectedTesters);
+
+      if (updateError) throw updateError;
+      
+      setMessage({
+        type: 'success',
+        text: `Successfully generated CSV for ${selectedTesterData.length} tester(s) for ${selectedPlatform.replace('_', ' ')}.`
+      });
+      
+      // Refresh data
+      await fetchData();
+      
+    } catch (error) {
+      console.error('Error generating CSV:', error);
+      setMessage({ 
+        type: 'error', 
+        text: 'Failed to generate CSV file. Please try again.' 
+      });
+    } finally {
+      setIsGeneratingCSV(false);
     }
   };
 
@@ -167,19 +336,6 @@ export function InvitationManager() {
         return `https://developer.huawei.com/consumer/en/service/josp/agc/index.html#/myProject/${appId}/9249519184596224953`;
       default:
         return '';
-    }
-  };
-
-  const getPlatformIcon = (platform: string) => {
-    switch (platform) {
-      case 'google_play':
-        return <Smartphone className="h-4 w-4" />;
-      case 'app_store':
-        return <Smartphone className="h-4 w-4 rotate-45" />;
-      case 'huawei_gallery':
-        return <Smartphone className="h-4 w-4" />;
-      default:
-        return <Smartphone className="h-4 w-4" />;
     }
   };
 
@@ -257,21 +413,43 @@ export function InvitationManager() {
 
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            {selectedTesters.length} of {filteredTesters.length} testers selected for {selectedPlatform.replace('_', ' ')}
+            {selectedTesters.length} of {filteredTesters.length} testers selected for <span className='capitalize'>{selectedPlatform.replace('_', ' ')}</span>
           </div>
           
-          <button
-            onClick={sendInvitations}
-            disabled={isProcessing || selectedTesters.length === 0 || !appId.trim()}
-            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-500 dark:to-orange-500 text-white rounded-lg hover:from-yellow-700 hover:to-orange-700 dark:hover:from-yellow-600 dark:hover:to-orange-600 focus:ring-4 focus:ring-yellow-200 dark:focus:ring-yellow-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isProcessing ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-            <span>Send Invitations</span>
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={generatePlatformCSV}
+              disabled={isGeneratingCSV || selectedTesters.length === 0}
+              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-500 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 dark:hover:from-blue-600 dark:hover:to-indigo-600 focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isGeneratingCSV ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+              ) : (
+                <Download className="h-5 w-5" />
+              )}
+              <span>Generate Platform CSV</span>
+            </button>
+            
+            <button
+              onClick={sendInvitations}
+              disabled={isProcessing || selectedTesters.length === 0 || !appId.trim()}
+              className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-500 dark:to-orange-500 text-white rounded-lg hover:from-yellow-700 hover:to-orange-700 dark:hover:from-yellow-600 dark:hover:to-orange-600 focus:ring-4 focus:ring-yellow-200 dark:focus:ring-yellow-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isProcessing ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                  {emailSendingStatus && (
+                    <span className="text-xs">
+                      {emailSendingStatus.sent}/{emailSendingStatus.total}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+              <span>Send Email Invitations</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -338,7 +516,6 @@ export function InvitationManager() {
                       <span className="text-sm">Invited</span>
                     </div>
                   )}
-                  {getPlatformIcon(selectedPlatform)}
                 </div>
               </div>
             );
@@ -425,7 +602,7 @@ export function InvitationManager() {
                       {tester?.full_name || 'Unknown Tester'}
                     </div>
                     <div className="text-sm text-gray-500 dark:text-gray-400">
-                      {invitation.platform.replace('_', ' ')} • {new Date(invitation.created_at).toLocaleDateString()}
+                      <span className='capitalize'>{invitation.platform.replace('_', ' ')}</span> • {new Date(invitation.created_at).toLocaleDateString()}
                     </div>
                   </div>
                   
@@ -509,6 +686,14 @@ export function InvitationManager() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
 
 
 
