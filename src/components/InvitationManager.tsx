@@ -1,0 +1,518 @@
+import React, { useState, useEffect } from 'react';
+import { Send, ExternalLink, Smartphone, AlertCircle, CheckCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import type { Database } from '../lib/supabase';
+
+type BetaTester = Database['public']['Tables']['beta_testers']['Row'];
+type BetaInvitation = Database['public']['Tables']['beta_invitations']['Row'];
+
+export function InvitationManager() {
+  const [approvedTesters, setApprovedTesters] = useState<BetaTester[]>([]);
+  const [invitations, setInvitations] = useState<BetaInvitation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedTesters, setSelectedTesters] = useState<string[]>([]);
+  const [selectedPlatform, setSelectedPlatform] = useState<'google_play' | 'app_store' | 'huawei_gallery'>('google_play');
+  const [appId, setAppId] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  
+  // Add pagination state
+  const [currentTesterPage, setCurrentTesterPage] = useState(1);
+  const [currentInvitationPage, setCurrentInvitationPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Define getFilteredTesters function before using it
+  const getFilteredTesters = () => {
+    return approvedTesters.filter(tester => {
+      const platform = selectedPlatform;
+      if (platform === 'google_play' || platform === 'huawei_gallery') {
+        return tester.device_type === 'android' || tester.device_type === 'huawei';
+      }
+      if (platform === 'app_store') {
+        return tester.device_type === 'ios';
+      }
+      return true;
+    });
+  };
+
+  // Calculate pagination values for testers
+  const filteredTesters = getFilteredTesters();
+  const indexOfLastTester = currentTesterPage * itemsPerPage;
+  const indexOfFirstTester = indexOfLastTester - itemsPerPage;
+  const currentTesters = filteredTesters.slice(indexOfFirstTester, indexOfLastTester);
+  const totalTesterPages = Math.ceil(filteredTesters.length / itemsPerPage);
+
+  // Calculate pagination values for invitations
+  const indexOfLastInvitation = currentInvitationPage * itemsPerPage;
+  const indexOfFirstInvitation = indexOfLastInvitation - itemsPerPage;
+  const currentInvitations = invitations.slice(indexOfFirstInvitation, indexOfLastInvitation);
+  const totalInvitationPages = Math.ceil(invitations.length / itemsPerPage);
+
+  // Add pagination functions
+  const changeTesterPage = (pageNumber: number) => {
+    setCurrentTesterPage(pageNumber);
+  };
+
+  const changeInvitationPage = (pageNumber: number) => {
+    setCurrentInvitationPage(pageNumber);
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [testersResult, invitationsResult] = await Promise.all([
+        supabase
+          .from('beta_testers')
+          .select('*')
+          .eq('status', 'approved')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('beta_invitations')
+          .select('*')
+          .order('created_at', { ascending: false })
+      ]);
+
+      if (testersResult.error) throw testersResult.error;
+      if (invitationsResult.error) throw invitationsResult.error;
+
+      setApprovedTesters(testersResult.data || []);
+      setInvitations(invitationsResult.data || []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTesterSelection = (testerId: string) => {
+    setSelectedTesters(prev =>
+      prev.includes(testerId)
+        ? prev.filter(id => id !== testerId)
+        : [...prev, testerId]
+    );
+  };
+
+  const selectAllTesters = () => {
+    const visibleTesterIds = currentTesters.map(tester => tester.id);
+    const allSelected = visibleTesterIds.every(tester => selectedTesters.includes(tester));
+    
+    if (allSelected) {
+      setSelectedTesters(prev => prev.filter(id => !visibleTesterIds.includes(id)));
+    } else {
+      setSelectedTesters(prev => [...new Set([...prev, ...visibleTesterIds])]);
+    }
+  };
+
+  const sendInvitations = async () => {
+    if (!appId.trim()) {
+      setMessage({ type: 'error', text: 'Please enter the app ID first.' });
+      return;
+    }
+
+    if (selectedTesters.length === 0) {
+      setMessage({ type: 'error', text: 'Please select at least one tester.' });
+      return;
+    }
+
+    setIsProcessing(true);
+    setMessage(null);
+
+    try {
+      const invitationData = selectedTesters.map(testerId => ({
+        tester_id: testerId,
+        platform: selectedPlatform,
+        invitation_link: generateInvitationLink(selectedPlatform, appId),
+        status: 'sent' as const,
+      }));
+
+      const { error } = await supabase
+        .from('beta_invitations')
+        .insert(invitationData);
+
+      if (error) throw error;
+
+      // Update tester status to 'invited'
+      const { error: updateError } = await supabase
+        .from('beta_testers')
+        .update({ status: 'invited' })
+        .in('id', selectedTesters);
+
+      if (updateError) throw updateError;
+
+      setMessage({
+        type: 'success',
+        text: `Successfully sent ${selectedTesters.length} invitation(s) to ${selectedPlatform.replace('_', ' ')}.`
+      });
+
+      setSelectedTesters([]);
+      await fetchData();
+    } catch (error) {
+      console.error('Error sending invitations:', error);
+      setMessage({ type: 'error', text: 'Failed to send invitations. Please try again.' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const generateInvitationLink = (platform: string, appId: string) => {
+    switch (platform) {
+      case 'google_play':
+        return `https://play.google.com/apps/testing/${appId}`;
+      case 'app_store':
+        return `https://testflight.apple.com/join/${appId}`;
+      case 'huawei_gallery':
+        return `https://developer.huawei.com/consumer/en/service/josp/agc/index.html#/myProject/${appId}/9249519184596224953`;
+      default:
+        return '';
+    }
+  };
+
+  const getPlatformIcon = (platform: string) => {
+    switch (platform) {
+      case 'google_play':
+        return <Smartphone className="h-4 w-4" />;
+      case 'app_store':
+        return <Smartphone className="h-4 w-4 rotate-45" />;
+      case 'huawei_gallery':
+        return <Smartphone className="h-4 w-4" />;
+      default:
+        return <Smartphone className="h-4 w-4" />;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-yellow-200 dark:border-yellow-700 border-t-yellow-600 dark:border-t-yellow-400"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
+          Beta Invitation Manager
+        </h1>
+        <p className="text-gray-600 dark:text-gray-300">Send beta testing invitations to approved testers</p>
+      </div>
+
+      {/* Status Message */}
+      {message && (
+        <div className={`mb-6 p-4 rounded-lg flex items-start space-x-3 ${
+          message.type === 'success' 
+            ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
+            : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+        }`}>
+          {message.type === 'success' ? (
+            <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+          ) : (
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+          )}
+          <p className={message.type === 'success' ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}>
+            {message.text}
+          </p>
+        </div>
+      )}
+
+      {/* Configuration Panel */}
+      <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-yellow-100 dark:border-gray-700 p-6 mb-4">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-6">Invitation Configuration</h2>
+        
+        <div className="grid md:grid-cols-2 gap-6 mb-6">
+          <div>
+            <label htmlFor="platform" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Target Platform
+            </label>
+            <select
+              id="platform"
+              value={selectedPlatform}
+              onChange={(e) => setSelectedPlatform(e.target.value as typeof selectedPlatform)}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 dark:focus:ring-yellow-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              <option value="google_play">Google Play Store</option>
+              <option value="app_store">Apple App Store (TestFlight)</option>
+              <option value="huawei_gallery">Huawei AppGallery</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="appId" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              App ID / Package Name
+            </label>
+            <input
+              type="text"
+              id="appId"
+              value={appId}
+              onChange={(e) => setAppId(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 dark:focus:ring-yellow-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+              placeholder="com.example.app or TestFlight ID"
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            {selectedTesters.length} of {filteredTesters.length} testers selected for {selectedPlatform.replace('_', ' ')}
+          </div>
+          
+          <button
+            onClick={sendInvitations}
+            disabled={isProcessing || selectedTesters.length === 0 || !appId.trim()}
+            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-500 dark:to-orange-500 text-white rounded-lg hover:from-yellow-700 hover:to-orange-700 dark:hover:from-yellow-600 dark:hover:to-orange-600 focus:ring-4 focus:ring-yellow-200 dark:focus:ring-yellow-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isProcessing ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
+            <span>Send Invitations</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Testers List */}
+      <div className="mb-4 bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-yellow-100 dark:border-gray-700 overflow-hidden">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
+              Approved Testers ({filteredTesters.length})
+            </h2>
+            <button
+              onClick={selectAllTesters}
+              className="text-sm text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 font-medium"
+            >
+              {filteredTesters.every(tester => selectedTesters.includes(tester.id))
+                ? 'Deselect All'
+                : 'Select All'}
+            </button>
+          </div>
+        </div>
+
+        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          {currentTesters.map((tester) => {
+            const isSelected = selectedTesters.includes(tester.id);
+            const hasInvitation = invitations.some(inv => 
+              inv.tester_id === tester.id && inv.platform === selectedPlatform
+            );
+
+            return (
+              <div
+                key={tester.id}
+                className={`p-6 flex items-center justify-between hover:bg-yellow-50/30 dark:hover:bg-yellow-900/20 transition-colors ${
+                  isSelected ? 'bg-yellow-50/50 dark:bg-yellow-900/30' : ''
+                }`}
+              >
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleTesterSelection(tester.id)}
+                    className="h-5 w-5 text-yellow-600 rounded border-gray-300 dark:border-gray-600 focus:ring-yellow-500 dark:focus:ring-yellow-400"
+                  />
+                  
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3">
+                      <h3 className="font-medium text-gray-900 dark:text-gray-100">{tester.full_name}</h3>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">{tester.email}</span>
+                    </div>
+                    <div className="flex items-center space-x-4 mt-1">
+                      <span className="text-sm text-gray-600 dark:text-gray-400 capitalize">
+                        {tester.device_type} - {tester.device_model}
+                      </span>
+                      <span className="text-sm text-gray-500 dark:text-gray-500 capitalize">
+                        {tester.experience_level} level
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  {hasInvitation && (
+                    <div className="flex items-center space-x-2 text-green-600 dark:text-green-400">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-sm">Invited</span>
+                    </div>
+                  )}
+                  {getPlatformIcon(selectedPlatform)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Add pagination for testers */}
+        {filteredTesters.length > 15 && (
+          <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Showing {indexOfFirstTester + 1}-{Math.min(indexOfLastTester, filteredTesters.length)} of {filteredTesters.length} testers
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => changeTesterPage(currentTesterPage - 1)}
+                disabled={currentTesterPage === 1}
+                className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              {Array.from({ length: Math.min(5, totalTesterPages) }, (_, i) => {
+                let pageNum = currentTesterPage;
+                if (currentTesterPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentTesterPage >= totalTesterPages - 2) {
+                  pageNum = totalTesterPages - 4 + i;
+                } else {
+                  pageNum = currentTesterPage - 2 + i;
+                }
+                
+                if (pageNum > 0 && pageNum <= totalTesterPages) {
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => changeTesterPage(pageNum)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-md ${
+                        currentTesterPage === pageNum
+                          ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800'
+                          : 'text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                }
+                return null;
+              })}
+              <button
+                onClick={() => changeTesterPage(currentTesterPage + 1)}
+                disabled={currentTesterPage === totalTesterPages}
+                className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+
+        {filteredTesters.length === 0 && (
+          <div className="text-center py-12">
+            <Smartphone className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+            <p className="text-gray-500 dark:text-gray-400">
+              No approved testers available for {selectedPlatform.replace('_', ' ')}.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Recent Invitations */}
+      {invitations.length > 0 && (
+        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-yellow-100 dark:border-gray-700 overflow-hidden">
+          <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Recent Invitations</h2>
+          </div>
+          
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {currentInvitations.map((invitation) => {
+              const tester = approvedTesters.find(t => t.id === invitation.tester_id);
+              
+              return (
+                <div key={invitation.id} className="p-6 flex items-center justify-between">
+                  <div>
+                    <div className="font-medium text-gray-900 dark:text-gray-100">
+                      {tester?.full_name || 'Unknown Tester'}
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                      {invitation.platform.replace('_', ' ')} • {new Date(invitation.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-3">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      invitation.status === 'sent' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300' :
+                      invitation.status === 'accepted' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
+                      invitation.status === 'declined' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' :
+                      'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-300'
+                    }`}>
+                      {invitation.status.charAt(0).toUpperCase() + invitation.status.slice(1)}
+                    </span>
+                    
+                    <a
+                      href={invitation.invitation_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add pagination for invitations */}
+          {invitations.length > 15 && (
+            <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Showing {indexOfFirstInvitation + 1}-{Math.min(indexOfLastInvitation, invitations.length)} of {invitations.length} invitations
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => changeInvitationPage(currentInvitationPage - 1)}
+                  disabled={currentInvitationPage === 1}
+                  className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                {Array.from({ length: Math.min(5, totalInvitationPages) }, (_, i) => {
+                  let pageNum = currentInvitationPage;
+                  if (currentInvitationPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentInvitationPage >= totalInvitationPages - 2) {
+                    pageNum = totalInvitationPages - 4 + i;
+                  } else {
+                    pageNum = currentInvitationPage - 2 + i;
+                  }
+                  
+                  if (pageNum > 0 && pageNum <= totalInvitationPages) {
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => changeInvitationPage(pageNum)}
+                        className={`w-8 h-8 flex items-center justify-center rounded-md ${
+                          currentInvitationPage === pageNum
+                            ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800'
+                            : 'text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  }
+                  return null;
+                })}
+                <button
+                  onClick={() => changeInvitationPage(currentInvitationPage + 1)}
+                  disabled={currentInvitationPage === totalInvitationPages}
+                  className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+
+
+
+
+
