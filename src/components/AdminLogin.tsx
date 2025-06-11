@@ -93,7 +93,7 @@ export function AdminLogin() {
           <p className="text-gray-600 dark:text-gray-300">Sign in to manage beta testers and send them invites</p>
         </div>
 
-        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-3xl shadow-2xl border border-yellow-100 dark:border-gray-700 p-8">
+        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-2xl border border-yellow-100 dark:border-gray-700 p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
