@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, Smartphone, Clock, CheckCircle, Download, Search } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
@@ -310,7 +310,7 @@ export function AdminDashboard() {
             <select
               value={bulkStatus}
               onChange={(e) => setBulkStatus(e.target.value as BetaTester['status'])}
-              className="border border-gray-200 dark:border-gray-600 rounded-md px-4 py-1 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 dark:focus:ring-yellow-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              className="border border-gray-200 dark:border-gray-600 rounded-md px-4 py-1 focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 dark:focus:ring-yellow-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:opacity-50"
               disabled={selectedTesters.length === 0}
             >
               <option value="pending">Pending</option>
@@ -335,7 +335,8 @@ export function AdminDashboard() {
             
           <button
             onClick={exportToCSV}
-            className="flex items-center space-x-2 px-4 py-1 bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-500 dark:to-orange-500 text-white rounded-md hover:from-yellow-700 hover:to-orange-700 dark:hover:from-yellow-600 dark:hover:to-orange-600 transition-all"
+            disabled={selectedTesters.length === 0 || isProcessing}
+            className="flex items-center space-x-2 px-4 py-1 bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-500 dark:to-orange-500 text-white rounded-md hover:from-yellow-700 hover:to-orange-700 dark:hover:from-yellow-600 dark:hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="h-4 w-4" />
             <span>{selectedTesters.length > 0 ? `Export Selected (${selectedTesters.length})` : 'Export CSV'}</span>
