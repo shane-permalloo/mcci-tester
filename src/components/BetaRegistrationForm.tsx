@@ -360,7 +360,7 @@ export function BetaRegistrationForm() {
           </div>
           <div className="relative overflow-hidden hidden left-0 transition-all group-hover:-left-1 md:block bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg hover:backdrop-blur-xl rounded-xl rounded-tl-none rounded-bl-none shadow-2xl border border-orange-100 dark:border-gray-700"
             style={{
-              backgroundImage: 'url(./src/assets/etrs-bg.jpg)',
+              backgroundImage: 'url(/etrs-bg.jpg)',
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
