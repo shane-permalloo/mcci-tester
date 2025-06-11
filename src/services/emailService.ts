@@ -6,9 +6,20 @@ interface EmailData {
 
 export const sendEmail = async (emailData: EmailData): Promise<boolean> => {
   try {
-    // Make sure we're using the full URL including protocol and host
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-    const response = await fetch(`${apiUrl}/api/send-email`, {
+    // Determine the API URL based on environment
+    let apiUrl: string;
+    
+    if (import.meta.env.PROD) {
+      // Production (Netlify) environment
+      apiUrl = '/api/send-email';
+    } else {
+      // Development environment - use local Express server
+      apiUrl = 'http://localhost:3001/api/send-email';
+    }
+    
+    console.log(`Using API URL: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -62,6 +73,8 @@ export const generateInvitationEmailContent = (
     </div>
   `;
 };
+
+
 
 
 
