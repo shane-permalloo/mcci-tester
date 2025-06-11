@@ -82,6 +82,7 @@ export function InvitationManager() {
 
   const fetchData = async () => {
     try {
+      // Update the query to join beta_testers with beta_invitations
       const [testersResult, invitationsResult] = await Promise.all([
         supabase
           .from('beta_testers')
@@ -90,7 +91,14 @@ export function InvitationManager() {
           .order('created_at', { ascending: false }),
         supabase
           .from('beta_invitations')
-          .select('*')
+          .select(`
+            *,
+            beta_testers (
+              id,
+              full_name,
+              email
+            )
+          `)
           .order('created_at', { ascending: false })
       ]);
 
@@ -154,21 +162,6 @@ export function InvitationManager() {
         status: 'sent' as const,
       }));
 
-      // Insert invitations into database
-      const { error } = await supabase
-        .from('beta_invitations')
-        .insert(invitationData);
-
-      if (error) throw error;
-
-      // Update tester status to 'invited'
-      const { error: updateError } = await supabase
-        .from('beta_testers')
-        .update({ status: 'invited' })
-        .in('id', selectedTesters);
-
-      if (updateError) throw updateError;
-      
       // Send emails to each tester
       let sentCount = 0;
       let failedCount = 0;
@@ -208,6 +201,40 @@ export function InvitationManager() {
           sent: sentCount,
           failed: failedCount
         });
+      }
+
+      // Only update database if at least one email was sent successfully
+      if (sentCount > 0) {
+        // Insert invitations into database for successful emails only
+        const successfulInvitations = selectedTesterData
+          .filter((_, index) => index < sentCount)
+          .map(tester => ({
+            tester_id: tester.id,
+            platform: selectedPlatform,
+            invitation_link: generateInvitationLink(selectedPlatform, appId),
+            status: 'sent' as const,
+          }));
+
+        // Insert invitations into database
+        const { error } = await supabase
+          .from('beta_invitations')
+          .insert(successfulInvitations);
+
+        if (error) throw error;
+
+        // Update tester status to 'invited' for successful emails only
+        const successfulTesterIds = selectedTesterData
+          .filter((_, index) => index < sentCount)
+          .map(tester => tester.id);
+
+        if (successfulTesterIds.length > 0) {
+          const { error: updateError } = await supabase
+            .from('beta_testers')
+            .update({ status: 'invited' })
+            .in('id', successfulTesterIds);
+
+          if (updateError) throw updateError;
+        }
       }
 
       // Set final message
@@ -339,6 +366,76 @@ export function InvitationManager() {
     }
   };
 
+  // Add a new function to resend an invitation
+  const resendInvitation = async (invitation: BetaInvitation) => {
+    setIsProcessing(true);
+    setMessage(null);
+    
+    try {
+      // Get the tester information
+      const { data: testerData, error: testerError } = await supabase
+        .from('beta_testers')
+        .select('*')
+        .eq('id', invitation.tester_id)
+        .single();
+      
+      if (testerError) throw testerError;
+      if (!testerData) throw new Error('Tester not found');
+      
+      // Get platform display name
+      const platformDisplayName = invitation.platform === 'google_play' 
+        ? 'Google Play Store' 
+        : invitation.platform === 'app_store' 
+          ? 'Apple TestFlight' 
+          : 'Huawei AppGallery';
+      
+      // Generate email content
+      const emailContent = generateInvitationEmailContent(
+        testerData.full_name,
+        platformDisplayName,
+        invitation.invitation_link
+      );
+      
+      // Send the email
+      const emailSent = await sendEmail({
+        to: testerData.email,
+        subject: 'You\'re Invited to Join Our Beta Test! (Reminder)',
+        html: emailContent
+      });
+      
+      if (emailSent) {
+        // Update the invitation record with a new sent timestamp
+        const { error: updateError } = await supabase
+          .from('beta_invitations')
+          .update({ 
+            invitation_sent_at: new Date().toISOString(),
+            status: 'sent'
+          })
+          .eq('id', invitation.id);
+        
+        if (updateError) throw updateError;
+        
+        setMessage({
+          type: 'success',
+          text: `Successfully resent invitation to ${testerData.full_name}.`
+        });
+        
+        // Refresh data
+        await fetchData();
+      } else {
+        throw new Error('Failed to send email');
+      }
+    } catch (error) {
+      console.error('Error resending invitation:', error);
+      setMessage({
+        type: 'error',
+        text: 'Failed to resend invitation. Please try again.'
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -447,7 +544,7 @@ export function InvitationManager() {
               ) : (
                 <Send className="h-5 w-5" />
               )}
-              <span>Send Email Invitations</span>
+              <span>Send Invitations</span>
             </button>
           </div>
         </div>
@@ -593,22 +690,30 @@ export function InvitationManager() {
           
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {currentInvitations.map((invitation) => {
-              const tester = approvedTesters.find(t => t.id === invitation.tester_id);
+              // Get tester information from the joined data
+              const tester = invitation.beta_testers || approvedTesters.find(t => t.id === invitation.tester_id);
+              const testerName = tester ? tester.full_name : 'Unknown Tester';
+              const testerEmail = tester ? tester.email : 'No email available';
+              
+              // Format the date with time
+              const invitationDate = new Date(invitation.invitation_sent_at || invitation.created_at);
+              const formattedDate = invitationDate.toLocaleDateString() + ' ' + 
+                                   invitationDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
               
               return (
                 <div key={invitation.id} className="p-6 flex items-center justify-between">
                   <div>
                     <div className="font-medium text-gray-900 dark:text-gray-100">
-                      {tester?.full_name || 'Unknown Tester'}
+                      {testerName} <span className='px-3 py-1 text-sm text-gray-500 dark:text-gray-400 bg-gray-200/50 dark:bg-gray-700/50 px-2 rounded-md'>{testerEmail}</span>
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                      <span className='capitalize'>{invitation.platform.replace('_', ' ')}</span> • {new Date(invitation.created_at).toLocaleDateString()}
+                    <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      <span className='capitalize'>{invitation.platform.replace('_', ' ')}</span> • {formattedDate}
                     </div>
                   </div>
                   
                   <div className="flex items-center space-x-3">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      invitation.status === 'sent' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300' :
+                      invitation.status === 'sent' ? 'bg-orange-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
                       invitation.status === 'accepted' ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' :
                       invitation.status === 'declined' ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' :
                       'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-300'
@@ -616,11 +721,23 @@ export function InvitationManager() {
                       {invitation.status.charAt(0).toUpperCase() + invitation.status.slice(1)}
                     </span>
                     
-                    <a
-                      href={invitation.invitation_link}
-                      target="_blank"
+                    <button
+                      onClick={() => resendInvitation(invitation)}
+                      disabled={isProcessing}
+                      className="px-3 py-1 text-sm bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 rounded-md hover:bg-yellow-200 dark:hover:bg-yellow-800/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isProcessing ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-800 dark:border-yellow-300 border-t-transparent" />
+                      ) : (
+                        'Resend'
+                      )}
+                    </button>
+                    
+                    <a 
+                      href={invitation.invitation_link} 
+                      target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300"
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                     >
                       <ExternalLink className="h-4 w-4" />
                     </a>
@@ -629,63 +746,39 @@ export function InvitationManager() {
               );
             })}
           </div>
-
-          {/* Add pagination for invitations */}
-          {invitations.length > 15 && (
-            <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                Showing {indexOfFirstInvitation + 1}-{Math.min(indexOfLastInvitation, invitations.length)} of {invitations.length} invitations
-              </div>
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => changeInvitationPage(currentInvitationPage - 1)}
-                  disabled={currentInvitationPage === 1}
-                  className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                {Array.from({ length: Math.min(5, totalInvitationPages) }, (_, i) => {
-                  let pageNum = currentInvitationPage;
-                  if (currentInvitationPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentInvitationPage >= totalInvitationPages - 2) {
-                    pageNum = totalInvitationPages - 4 + i;
-                  } else {
-                    pageNum = currentInvitationPage - 2 + i;
-                  }
-                  
-                  if (pageNum > 0 && pageNum <= totalInvitationPages) {
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => changeInvitationPage(pageNum)}
-                        className={`w-8 h-8 flex items-center justify-center rounded-md ${
-                          currentInvitationPage === pageNum
-                            ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 border border-yellow-200 dark:border-yellow-800'
-                            : 'text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  }
-                  return null;
-                })}
-                <button
-                  onClick={() => changeInvitationPage(currentInvitationPage + 1)}
-                  disabled={currentInvitationPage === totalInvitationPages}
-                  className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
+          
+          {/* Pagination controls */}
+          <div className="p-4 flex items-center justify-center space-x-2">
+            <button
+              onClick={() => changeInvitationPage(currentInvitationPage - 1)}
+              disabled={currentInvitationPage === 1}
+              className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-600 dark:text-gray-300">
+              Page {currentInvitationPage} of {Math.max(1, totalInvitationPages)}
+            </span>
+            <button
+              onClick={() => changeInvitationPage(currentInvitationPage + 1)}
+              disabled={currentInvitationPage === totalInvitationPages || totalInvitationPages === 0}
+              className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>
   );
 }
+
+
+
+
+
+
+
 
 
 

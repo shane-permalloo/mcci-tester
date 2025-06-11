@@ -1,8 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
-
-// You could use any email service here: SendGrid, Mailgun, AWS SES, etc.
-// For this example, I'll use a hypothetical email service
-
 interface EmailData {
   to: string;
   subject: string;
@@ -11,21 +6,21 @@ interface EmailData {
 
 export const sendEmail = async (emailData: EmailData): Promise<boolean> => {
   try {
-    // In a real implementation, you would:
-    // 1. Call your email service API
-    // 2. Handle rate limits, errors, etc.
-    
-    // For Supabase Edge Functions approach:
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-    );
-    
-    const { error } = await supabase.functions.invoke('send-email', {
-      body: JSON.stringify(emailData)
+    // Make sure we're using the full URL including protocol and host
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const response = await fetch(`${apiUrl}/api/send-email`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(emailData),
     });
     
-    if (error) throw error;
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to send email');
+    }
     
     console.log(`Email sent to ${emailData.to}`);
     return true;
@@ -49,6 +44,8 @@ export const generateInvitationEmailContent = (
       
       <p>Thank you for signing up to be a beta tester. You've been selected to participate in our beta testing program!</p>
       
+      <p><strong>Important:</strong> The testing link will be available starting from <span style="color: #F59E0B; font-weight: bold;">June 23rd, 2025</span>.</p>
+      
       <p>You can access the beta version of our app on ${platformName} by clicking the link below:</p>
       
       <p style="text-align: center;">
@@ -65,3 +62,8 @@ export const generateInvitationEmailContent = (
     </div>
   `;
 };
+
+
+
+
+
