@@ -1,15 +1,22 @@
 const nodemailer = require('nodemailer');
 
 // Create transporter outside the handler for potential reuse
-const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.BREVO_EMAIL, // Use environment variables
-    pass: process.env.BREVO_PASSWORD // This is the SMTP password, not API key
-  }
-});
+const createTransporter = () => {
+  // Log environment variables availability (without exposing actual values)
+  console.log('Environment variables check:');
+  console.log('BREVO_EMAIL exists:', !!process.env.BREVO_EMAIL);
+  console.log('BREVO_PASSWORD exists:', !!process.env.BREVO_PASSWORD);
+  
+  return nodemailer.createTransport({
+    host: 'smtp-relay.brevo.com',
+    port: 587,
+    secure: false,
+    auth: {
+      user: process.env.BREVO_EMAIL, // Use environment variables
+      pass: process.env.BREVO_PASSWORD // This is the SMTP password, not API key
+    }
+  });
+};
 
 exports.handler = async function(event, context) {
   // Enable CORS
@@ -19,8 +26,11 @@ exports.handler = async function(event, context) {
     'Access-Control-Allow-Methods': 'POST, OPTIONS'
   };
 
+  console.log('Function invoked with method:', event.httpMethod);
+  
   // Handle preflight OPTIONS request
   if (event.httpMethod === 'OPTIONS') {
+    console.log('Handling OPTIONS request');
     return {
       statusCode: 200,
       headers
@@ -29,6 +39,7 @@ exports.handler = async function(event, context) {
 
   // Only allow POST
   if (event.httpMethod !== 'POST') {
+    console.log('Method not allowed:', event.httpMethod);
     return {
       statusCode: 405,
       headers,
@@ -37,9 +48,11 @@ exports.handler = async function(event, context) {
   }
 
   try {
+    console.log('Request body:', event.body);
     const { to, subject, html } = JSON.parse(event.body);
     
     if (!to || !subject || !html) {
+      console.log('Missing required fields');
       return {
         statusCode: 400,
         headers,
@@ -57,7 +70,9 @@ exports.handler = async function(event, context) {
       html
     };
     
-    console.log('Sending email with options:', mailOptions);
+    console.log('Creating transporter and sending email');
+    const transporter = createTransporter();
+    console.log('Mail options:', { to: mailOptions.to, subject: mailOptions.subject });
     
     const info = await transporter.sendMail(mailOptions);
     
@@ -73,9 +88,11 @@ exports.handler = async function(event, context) {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ success: false, error: error.message })
+      body: JSON.stringify({ 
+        success: false, 
+        error: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      })
     };
   }
 };
-
-

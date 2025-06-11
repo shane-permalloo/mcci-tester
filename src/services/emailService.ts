@@ -11,7 +11,7 @@ export const sendEmail = async (emailData: EmailData): Promise<boolean> => {
     
     if (import.meta.env.PROD) {
       // Production (Netlify) environment
-      apiUrl = '/api/send-email';
+      apiUrl = '/.netlify/functions/send-email';
     } else {
       // Development environment - use local Express server
       apiUrl = 'http://localhost:3001/api/send-email';
@@ -73,10 +73,3 @@ export const generateInvitationEmailContent = (
     </div>
   `;
 };
-
-
-
-
-
-
-
