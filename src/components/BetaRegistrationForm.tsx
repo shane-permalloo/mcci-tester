@@ -189,7 +189,7 @@ export function BetaRegistrationForm() {
         {/* Form */}
         <div className='flex justify-center flex-row grid grid-cols-1 md:grid-cols-2 group'>
 
-          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-xl lg:rounded-r-none lg:rounded-br-lg border-r-0 lg:border-r-1 shadow-2xl border border-orange-100 dark:border-gray-700 p-8">
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-xl lg:rounded-r-none lg:rounded-r-lg border-r-0 lg:border-r-1 shadow-2xl border border-orange-100 dark:border-gray-700 p-8">
             
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* Personal Information */}
