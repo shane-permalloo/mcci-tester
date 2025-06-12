@@ -1,6 +1,6 @@
 {
-  "name": "Beta Tester Hub",
-  "short_name": "BetaHub",
+  "name": "MCCI Beta Testers",
+  "short_name": "MCCI Testers",
   "description": "Join our beta testing program",
   "start_url": "/",
   "display": "standalone",
