@@ -372,8 +372,10 @@ export function BetaRegistrationForm() {
         </div>
 
         {/* Footer */}
-        <div className="text-center mt-8 text-gray-600 dark:text-gray-300">
+        <div className="text-center mt-8 text-sm text-gray-600 dark:text-gray-300">
           <p>Your information is secure and will only be used for beta testing purposes.</p>
+          <p>Mauritius Network Services Ltd. © All rights reserved | <a className="text-yellow-600 dark:text-yellow-400 hover:underline" href="https://mns.mu/wp-content/uploads/2024/07/DC0-MNS_Privacy-Notice.pdf" target="_blank">Privacy Notice</a>
+</p>
         </div>
       </div>
     </div>
