@@ -283,7 +283,7 @@ export function AdminDashboard() {
               <option value="all">All Devices</option>
               <option value="ios">iOS</option>
               <option value="android">Android</option>
-              <option value="huawei">Huawei</option>
+              {/* <option value="huawei">Huawei</option> */}
             </select>
             </div>
           </div>

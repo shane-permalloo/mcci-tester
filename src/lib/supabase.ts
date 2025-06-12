@@ -13,7 +13,7 @@ export type Database = {
           id: string;
           email: string;
           full_name: string;
-          device_type: 'ios' | 'android' | 'huawei';
+          device_type: 'ios' | 'android' /*| 'huawei'*/;
           device_model: string;
           experience_level: 'beginner' | 'intermediate' | 'expert';
           status: 'pending' | 'approved' | 'invited' | 'active' | 'declined';
@@ -24,7 +24,7 @@ export type Database = {
           id?: string;
           email: string;
           full_name: string;
-          device_type: 'ios' | 'android' | 'huawei';
+          device_type: 'ios' | 'android' /*| 'huawei'*/;
           device_model: string;
           experience_level: 'beginner' | 'intermediate' | 'expert';
           status?: 'pending' | 'approved' | 'invited' | 'active' | 'declined';
@@ -35,7 +35,7 @@ export type Database = {
           id?: string;
           email?: string;
           full_name?: string;
-          device_type?: 'ios' | 'android' | 'huawei';
+          device_type?: 'ios' | 'android' /*| 'huawei'*/;
           device_model?: string;
           experience_level?: 'beginner' | 'intermediate' | 'expert';
           status?: 'pending' | 'approved' | 'invited' | 'active' | 'declined';
@@ -47,7 +47,7 @@ export type Database = {
         Row: {
           id: string;
           tester_id: string;
-          platform: 'google_play' | 'app_store' | 'huawei_gallery';
+          platform: 'google_play' | 'app_store' /*| 'huawei_gallery'*/;
           invitation_sent_at: string;
           status: 'sent' | 'accepted' | 'declined' | 'expired';
           invitation_link: string;
@@ -56,7 +56,7 @@ export type Database = {
         Insert: {
           id?: string;
           tester_id: string;
-          platform: 'google_play' | 'app_store' | 'huawei_gallery';
+          platform: 'google_play' | 'app_store' /*| 'huawei_gallery'*/;
           invitation_sent_at?: string;
           status?: 'sent' | 'accepted' | 'declined' | 'expired';
           invitation_link: string;
@@ -65,7 +65,7 @@ export type Database = {
         Update: {
           id?: string;
           tester_id?: string;
-          platform?: 'google_play' | 'app_store' | 'huawei_gallery';
+          platform?: 'google_play' | 'app_store' /*| 'huawei_gallery'*/;
           invitation_sent_at?: string;
           status?: 'sent' | 'accepted' | 'declined' | 'expired';
           invitation_link?: string;

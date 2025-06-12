@@ -10,10 +10,10 @@ interface PlatformCredentials {
     keyId: string;
     privateKey: string;
   };
-  huaweiGallery?: {
-    clientId: string;
-    clientSecret: string;
-  };
+  // huaweiGallery?: {
+  //   clientId: string;
+  //   clientSecret: string;
+  // };
 }
 
 // Google Play API
@@ -55,20 +55,20 @@ export const addTestersToTestFlight = async (
 };
 
 // Huawei AppGallery API
-export const addTestersToHuaweiGallery = async (
-  appId: string,
-  emails: string[]
-): Promise<boolean> => {
-  try {
-    // In a real implementation:
-    // 1. Authenticate with Huawei using OAuth
-    // 2. Call the AppGallery Connect API to add testers
-    // 3. Return success/failure
+// export const addTestersToHuaweiGallery = async (
+//   appId: string,
+//   emails: string[]
+// ): Promise<boolean> => {
+//   try {
+//     // In a real implementation:
+//     // 1. Authenticate with Huawei using OAuth
+//     // 2. Call the AppGallery Connect API to add testers
+//     // 3. Return success/failure
     
-    console.log(`Adding ${emails.length} testers to Huawei AppGallery for ${appId}`);
-    return true;
-  } catch (error) {
-    console.error('Error adding testers to Huawei AppGallery:', error);
-    return false;
-  }
+//     console.log(`Adding ${emails.length} testers to Huawei AppGallery for ${appId}`);
+//     return true;
+//   } catch (error) {
+//     console.error('Error adding testers to Huawei AppGallery:', error);
+//     return false;
+//   }
 };

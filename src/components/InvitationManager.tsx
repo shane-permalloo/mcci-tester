@@ -12,7 +12,7 @@ export function InvitationManager() {
   const [invitations, setInvitations] = useState<BetaInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTesters, setSelectedTesters] = useState<string[]>([]);
-  const [selectedPlatform, setSelectedPlatform] = useState<'google_play' | 'app_store' | 'huawei_gallery'>('google_play');
+  const [selectedPlatform, setSelectedPlatform] = useState<'google_play' | 'app_store'>('google_play');
   const [appId, setAppId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -43,9 +43,6 @@ export function InvitationManager() {
       const platform = selectedPlatform;
       if (platform === 'google_play') {
         return tester.device_type === 'android';
-      }
-      if (platform === 'huawei_gallery') {
-        return tester.device_type === 'huawei';
       }
       if (platform === 'app_store') {
         return tester.device_type === 'ios';
@@ -168,10 +165,9 @@ export function InvitationManager() {
       
       // Get platform display name
       const platformDisplayName = selectedPlatform === 'google_play' 
-        ? 'Google Play Store' 
-        : selectedPlatform === 'app_store' 
-          ? 'Apple TestFlight' 
-          : 'Huawei AppGallery';
+        ? 'Google Play Store' :  'Apple TestFlight';
+        // : 'Apple TestFlight' 
+        //   : 'Huawei AppGallery';
       
       // Send emails in sequence to avoid rate limits
       for (const tester of selectedTesterData) {
@@ -301,14 +297,14 @@ export function InvitationManager() {
           });
           break;
           
-        case 'huawei_gallery':
-          // Huawei format (email, name)
-          headers = ['Email', 'Name'];
-          csvRows = selectedTesterData.map(tester => [
-            tester.email, 
-            tester.full_name
-          ]);
-          break;
+        // case 'huawei_gallery':
+        //   // Huawei format (email, name)
+        //   headers = ['Email', 'Name'];
+        //   csvRows = selectedTesterData.map(tester => [
+        //     tester.email, 
+        //     tester.full_name
+        //   ]);
+        //   break;
       }
       
       // Generate CSV content
@@ -359,8 +355,8 @@ export function InvitationManager() {
         return `https://play.google.com/apps/testing/${appId}`;
       case 'app_store':
         return `https://testflight.apple.com/join/${appId}`;
-      case 'huawei_gallery':
-        return `https://developer.huawei.com/consumer/en/service/josp/agc/index.html#/myProject/${appId}/9249519184596224953`;
+      // case 'huawei_gallery':
+      //   return `https://developer.huawei.com/consumer/en/service/josp/agc/index.html#/myProject/${appId}/9249519184596224953`;
       default:
         return '';
     }
@@ -384,10 +380,10 @@ export function InvitationManager() {
       
       // Get platform display name
       const platformDisplayName = invitation.platform === 'google_play' 
-        ? 'Google Play Store' 
-        : invitation.platform === 'app_store' 
-          ? 'Apple TestFlight' 
-          : 'Huawei AppGallery';
+        ? 'Google Play Store' : 'Apple TestFlight';
+        // : invitation.platform === 'app_store' 
+        //   ? 'Apple TestFlight' 
+        //   : 'Huawei AppGallery';
       
       // Generate email content
       const emailContent = generateInvitationEmailContent(
@@ -489,7 +485,7 @@ export function InvitationManager() {
             >
               <option value="google_play">Google Play Store</option>
               <option value="app_store">Apple App Store (TestFlight)</option>
-              <option value="huawei_gallery">Huawei AppGallery</option>
+              {/* <option value="huawei_gallery">Huawei AppGallery</option> */}
             </select>
           </div>
 

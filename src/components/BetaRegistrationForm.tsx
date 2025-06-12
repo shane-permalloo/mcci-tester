@@ -15,7 +15,7 @@ export function BetaRegistrationForm() {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    deviceType: '' as 'ios' | 'android' | 'huawei' | '',
+    deviceType: '' as 'ios' | 'android' | /*'huawei' |*/ '',
     deviceModel: '',
     experienceLevel: '' as 'beginner' | 'intermediate' | 'expert' | '',
   });
@@ -309,7 +309,7 @@ export function BetaRegistrationForm() {
                       <option value="">Select your platform</option>
                       <option value="ios">iOS (iPhone/iPad)</option>
                       <option value="android">Android</option>
-                      <option value="huawei">Huawei</option>
+                      {/* <option value="huawei">Huawei</option> */}
                     </select>
                     {errors.deviceType && touched.deviceType && (
                       <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.deviceType}</p>
