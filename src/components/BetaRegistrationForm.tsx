@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Smartphone, Send, CheckCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { validateEmail, validateRequired } from '../utils/validation';
+import { validateEmailForPlatform, validateRequired } from '../utils/validation';
 
 interface FormErrors {
   fullName: string;
@@ -39,10 +39,23 @@ export function BetaRegistrationForm() {
         validation = validateRequired(value, 'Full name');
         break;
       case 'email':
-        validation = validateEmail(value);
+        // Use platform-specific email validation if device type is selected
+        if (formData.deviceType) {
+          validation = validateEmailForPlatform(value, formData.deviceType);
+        } else {
+          validation = validateEmailForPlatform(value, '');
+        }
         break;
       case 'deviceType':
         validation = validateRequired(value, 'Device platform');
+        // Re-validate email when device type changes
+        if (formData.email && touched.email) {
+          const emailValidation = validateEmailForPlatform(formData.email, value);
+          setErrors(prev => ({
+            ...prev,
+            email: emailValidation.message
+          }));
+        }
         break;
       case 'deviceModel':
         validation = validateRequired(value, 'Device model');
@@ -120,7 +133,7 @@ export function BetaRegistrationForm() {
       if (error) throw error;
 
       setSubmitStatus('success');
-      setMessage('Thank you for joining our beta program! We\'ll be in touch soon.');
+      setMessage('Thank you for joining our beta program! We\'ll be in touch with yousoon.');
       setFormData({
         fullName: '',
         email: '',
@@ -145,9 +158,27 @@ export function BetaRegistrationForm() {
     }
   };
 
+  const getEmailPlaceholder = () => {
+    if (formData.deviceType === 'ios') {
+      return 'your.name@icloud.com';
+    } else if (formData.deviceType === 'android') {
+      return 'your.name@gmail.com';
+    }
+    return 'Enter your email';
+  };
+
+  const getEmailHelpText = () => {
+    if (formData.deviceType === 'ios') {
+      return 'Please use your iCloud email address (@icloud.com, @me.com, or @mac.com)';
+    } else if (formData.deviceType === 'android') {
+      return 'Please use your Gmail email address (@gmail.com)';
+    }
+    return '';
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8">
-      <div className="max-w-5xl w-full">
+      <div className="max-w-7xl w-full">
         {/* Header */}
         <div className="text-center mb-4 group">
           <div className="relative inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-600 dark:from-yellow-400 dark:to-orange-500 rounded-md mb-4"
@@ -163,8 +194,8 @@ export function BetaRegistrationForm() {
           <h1 className="text-3xl font-bold max-w-xl mx-auto bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-400 dark:to-orange-400 bg-clip-text text-transparent mb-4">
             Join Our Beta Program to test the new MCCI Shopping Route Mobile App
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-xl mx-auto leading-relaxed">
-            Be among the first to test a new shopping experience on our new mobile app. Testing will start as from <span className='font-semibold bg-gradient-to-r from-blue-400 to-purple-500 dark:from-blue-400 dark:to-purple-500 bg-clip-text text-transparent'>23 June 2025</span>.
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
+            Be among the first to test a new shopping experience on our new mobile app.<br />Testing will start as from <span className='font-semibold bg-gradient-to-r from-blue-400 to-purple-500 dark:from-blue-400 dark:to-purple-500 bg-clip-text text-transparent'>23 June 2025</span>.
           </p>
         </div>
 
@@ -192,92 +223,6 @@ export function BetaRegistrationForm() {
           <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg rounded-xl lg:rounded-r-none lg:rounded-r-lg border-r-0 lg:border-r-1 shadow-2xl border border-orange-100 dark:border-gray-700 p-8">
             
             <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Personal Information */}
-              <div className="space-y-6">
-                
-                <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
-                  <img
-                src="https://taxfreeshopping.mu/wp-content/uploads/2024/08/cropped-mcci-favicon-192x192.png"
-                alt="MCCI Logo"
-                className="h-6 w-6 inline-block mr-2 relative -top-0.5"
-              />
-              Personal Information</h2>
-                
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Full Name *
-                    </label>
-                    <input
-                      type="text"
-                      id="fullName"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleInputChange}
-                      onBlur={handleBlur}
-                      className={`w-full px-4 py-3 rounded-md border transition-all outline-none ${
-                        errors.fullName && touched.fullName
-                          ? 'border-red-300 dark:border-red-600 focus:border-red-400 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-900/30'
-                          : 'border-gray-200 dark:border-gray-600 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 dark:focus:ring-yellow-900/30'
-                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400`}
-                      placeholder="Enter your full name"
-                    />
-                    {errors.fullName && touched.fullName && (
-                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.fullName}</p>
-                    )}
-                  </div>
-                  
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      onBlur={handleBlur}
-                      className={`w-full px-4 py-3 rounded-md border transition-all outline-none ${
-                        errors.email && touched.email
-                          ? 'border-red-300 dark:border-red-600 focus:border-red-400 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-900/30'
-                          : 'border-gray-200 dark:border-gray-600 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 dark:focus:ring-yellow-900/30'
-                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400`}
-                      placeholder="Enter your email"
-                    />
-                    {errors.email && touched.email && (
-                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
-                    )}
-                  </div>
-                </div>
-                {/* Experience Level */}
-              <div>
-                <label htmlFor="experienceLevel" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Testing Experience Level *
-                </label>
-                <select
-                  id="experienceLevel"
-                  name="experienceLevel"
-                  value={formData.experienceLevel}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  className={`w-full px-4 py-3 rounded-md border transition-all outline-none ${
-                    errors.experienceLevel && touched.experienceLevel
-                      ? 'border-red-300 dark:border-red-600 focus:border-red-400 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-900/30'
-                      : 'border-gray-200 dark:border-gray-600 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 dark:focus:ring-yellow-900/30'
-                  } bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100`}
-                >
-                  <option value="">Select your experience level</option>
-                  <option value="beginner">Beginner - New to beta testing</option>
-                  <option value="intermediate">Intermediate - Some beta testing experience</option>
-                  <option value="expert">Expert - Extensive beta testing experience</option>
-                </select>
-                {errors.experienceLevel && touched.experienceLevel && (
-                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.experienceLevel}</p>
-                )}
-              </div>
-
-              </div>
 
               {/* Device Information */}
               <div className="space-y-6">
@@ -339,6 +284,97 @@ export function BetaRegistrationForm() {
                     )}
                   </div>
                 </div>
+              </div>
+
+
+              {/* Personal Information */}
+              <div className="space-y-6">
+                
+                <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+                  <img
+                src="https://taxfreeshopping.mu/wp-content/uploads/2024/08/cropped-mcci-favicon-192x192.png"
+                alt="MCCI Logo"
+                className="h-6 w-6 inline-block mr-2 relative -top-0.5"
+              />
+              Personal Information</h2>
+                
+                <div className="grid gap-6">
+                  <div>
+                    <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      id="fullName"
+                      name="fullName"
+                      value={formData.fullName}
+                      onChange={handleInputChange}
+                      onBlur={handleBlur}
+                      className={`w-full px-4 py-3 rounded-md border transition-all outline-none ${
+                        errors.fullName && touched.fullName
+                          ? 'border-red-300 dark:border-red-600 focus:border-red-400 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-900/30'
+                          : 'border-gray-200 dark:border-gray-600 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 dark:focus:ring-yellow-900/30'
+                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400`}
+                      placeholder="Enter your full name"
+                    />
+                    {errors.fullName && touched.fullName && (
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.fullName}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      onBlur={handleBlur}
+                      className={`w-full px-4 py-3 rounded-md border transition-all outline-none ${
+                        errors.email && touched.email
+                          ? 'border-red-300 dark:border-red-600 focus:border-red-400 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-900/30'
+                          : 'border-gray-200 dark:border-gray-600 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 dark:focus:ring-yellow-900/30'
+                      } bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400`}
+                      placeholder={getEmailPlaceholder()}
+                    />
+                    {getEmailHelpText() && !errors.email && (
+                      <p className="mt-1 text-sm text-blue-600 dark:text-blue-400">{getEmailHelpText()}</p>
+                    )}
+                    {errors.email && touched.email && (
+                      <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
+                    )}
+                  </div>
+                </div>
+                {/* Experience Level */}
+              <div>
+                <label htmlFor="experienceLevel" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Testing Experience Level *
+                </label>
+                <select
+                  id="experienceLevel"
+                  name="experienceLevel"
+                  value={formData.experienceLevel}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  className={`w-full px-4 py-3 rounded-md border transition-all outline-none ${
+                    errors.experienceLevel && touched.experienceLevel
+                      ? 'border-red-300 dark:border-red-600 focus:border-red-400 focus:ring-4 focus:ring-red-100 dark:focus:ring-red-900/30'
+                      : 'border-gray-200 dark:border-gray-600 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-100 dark:focus:ring-yellow-900/30'
+                  } bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100`}
+                >
+                  <option value="">Select your experience level</option>
+                  <option value="beginner">Beginner - New to beta testing</option>
+                  <option value="intermediate">Intermediate - Some beta testing experience</option>
+                  <option value="expert">Expert - Extensive beta testing experience</option>
+                </select>
+                {errors.experienceLevel && touched.experienceLevel && (
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.experienceLevel}</p>
+                )}
+              </div>
+
               </div>
 
               {/* Submit Button */}
