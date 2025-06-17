@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Smartphone, Send, CheckCircle, AlertCircle } from 'lucide-react';
+import { Smartphone, Send, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { validateEmailForPlatform, validateRequired } from '../utils/validation';
 
@@ -179,6 +180,20 @@ export function BetaRegistrationForm() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <div className="max-w-7xl w-full">
+
+        {/* Feedback Button */}
+        <div className="absolute top-4 left-4 z-50 group transition-all duration-300">
+          <Link
+            to="/"
+            aria-label="Send feedback"
+            title="Send feedback"
+            className="p-3 flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-600 backdrop-blur-lg border border-purple-100 dark:border-gray-700 text-gray-300 hover:text-white rounded-full transition-all shadow-lg"
+          >
+            <MessageSquare className="h-6 w-6" />
+            <span className='hidden group-hover:inline transition-all duration-300 w-0 group-hover:w-auto overflow-hidden'>Send Feedback</span>
+          </Link>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-4 group">
           <div className="relative inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-600 dark:from-yellow-400 dark:to-orange-500 rounded-md mb-4"

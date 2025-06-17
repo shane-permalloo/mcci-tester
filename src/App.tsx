@@ -3,9 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Layout } from './components/Layout';
 import { BetaRegistrationForm } from './components/BetaRegistrationForm';
+import { FeedbackForm } from './components/FeedbackForm';
 import { AdminLogin } from './components/AdminLogin';
 import { AdminDashboard } from './components/AdminDashboard';
 import { InvitationManager } from './components/InvitationManager';
+import { FeedbackDashboard } from './components/FeedbackDashboard';
 import { useAuth } from './hooks/useAuth';
 
 function AppContent() {
@@ -24,14 +26,20 @@ function AppContent() {
       <Layout>
         <Routes>
           <Route path="/" element={<BetaRegistrationForm />} />
+          <Route path="/feedback" element={<FeedbackForm />} />
           <Route
-            path="/admin"
-            element={user ? <AdminDashboard /> : <AdminLogin />}
+        path="/admin"
+        element={user ? <AdminDashboard /> : <AdminLogin />}
           />
           <Route
-            path="/admin/invitations"
-            element={user ? <InvitationManager /> : <Navigate to="/admin" />}
+        path="/admin/invitations"
+        element={user ? <InvitationManager /> : <Navigate to="/admin" />}
           />
+          <Route
+        path="/admin/feedback"
+        element={user ? <FeedbackDashboard /> : <Navigate to="/admin" />}
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
     </Router>

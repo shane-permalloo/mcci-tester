@@ -72,6 +72,38 @@ export type Database = {
           created_at?: string;
         };
       };
+      beta_feedback: {
+        Row: {
+          id: string;
+          device_type: 'ios' | 'android' /*| 'huawei'*/;
+          device_model: string;
+          feedback_type: 'bug_report' | 'suggestion' | 'general_comment';
+          comment: string;
+          is_anonymous: boolean;
+          email: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          device_type: 'ios' | 'android' /*| 'huawei'*/;
+          device_model: string;
+          feedback_type: 'bug_report' | 'suggestion' | 'general_comment';
+          comment: string;
+          is_anonymous?: boolean;
+          email?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          device_type?: 'ios' | 'android' /*| 'huawei'*/;
+          device_model?: string;
+          feedback_type?: 'bug_report' | 'suggestion' | 'general_comment';
+          comment?: string;
+          is_anonymous?: boolean;
+          email?: string | null;
+          created_at?: string;
+        };
+      };
     };
   };
 };
