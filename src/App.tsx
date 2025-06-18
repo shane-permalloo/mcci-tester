@@ -4,6 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { Layout } from './components/Layout';
 import { BetaRegistrationForm } from './components/BetaRegistrationForm';
 import { FeedbackForm } from './components/FeedbackForm';
+import { FeedbackKanban } from './components/FeedbackKanban';
 import { AdminLogin } from './components/AdminLogin';
 import { AdminDashboard } from './components/AdminDashboard';
 import { InvitationManager } from './components/InvitationManager';
@@ -38,6 +39,10 @@ function AppContent() {
           <Route
         path="/admin/feedback"
         element={user ? <FeedbackDashboard /> : <Navigate to="/admin" />}
+          />
+          <Route
+            path="/admin/kanban"
+            element={user ? <FeedbackKanban /> : <Navigate to="/admin" />}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

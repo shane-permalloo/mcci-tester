@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Smartphone, Users, Settings, LogOut, Sun, Moon, MessageSquare } from 'lucide-react';
+import { Smartphone, Users, Settings, LogOut, Sun, Moon, MessageSquare, Kanban } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -64,6 +64,17 @@ export function Layout({ children }: LayoutProps) {
                   >
                     <MessageSquare className="h-4 w-4" />
                     <span>Feedback</span>
+                  </Link>
+                  <Link
+                    to="/admin/kanban"
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-all ${
+                      location.pathname === '/admin/kanban'
+                        ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+                        : 'text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/30'
+                    }`}
+                  >
+                    <Kanban className="h-4 w-4" />
+                    <span>Kanban</span>
                   </Link>
                 </div>
               </div>

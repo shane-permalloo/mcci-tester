@@ -81,7 +81,10 @@ export type Database = {
           comment: string;
           is_anonymous: boolean;
           email: string | null;
+          status: 'to_discuss' | 'low' | 'high' | 'to_implement';
+          development_estimate: number;
           created_at: string;
+          updated_at: string;
         };
         Insert: {
           id?: string;
@@ -91,7 +94,10 @@ export type Database = {
           comment: string;
           is_anonymous?: boolean;
           email?: string | null;
+          status?: 'to_discuss' | 'low' | 'high' | 'to_implement';
+          development_estimate?: number;
           created_at?: string;
+          updated_at?: string;
         };
         Update: {
           id?: string;
@@ -101,7 +107,10 @@ export type Database = {
           comment?: string;
           is_anonymous?: boolean;
           email?: string | null;
+          status?: 'to_discuss' | 'low' | 'high' | 'to_implement';
+          development_estimate?: number;
           created_at?: string;
+          updated_at?: string;
         };
       };
     };
