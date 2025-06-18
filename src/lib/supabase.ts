@@ -81,7 +81,7 @@ export type Database = {
           comment: string;
           is_anonymous: boolean;
           email: string | null;
-          status: 'to_discuss' | 'low' | 'high' | 'to_implement';
+          status: 'to_discuss' | 'low' | 'high' | 'to_implement' | 'archived'/* | 'published'*/;
           development_estimate: number;
           created_at: string;
           updated_at: string;
@@ -94,7 +94,7 @@ export type Database = {
           comment: string;
           is_anonymous?: boolean;
           email?: string | null;
-          status?: 'to_discuss' | 'low' | 'high' | 'to_implement';
+          status?: 'to_discuss' | 'low' | 'high' | 'to_implement' | 'archived' | 'published';
           development_estimate?: number;
           created_at?: string;
           updated_at?: string;
@@ -107,7 +107,7 @@ export type Database = {
           comment?: string;
           is_anonymous?: boolean;
           email?: string | null;
-          status?: 'to_discuss' | 'low' | 'high' | 'to_implement';
+          status?: 'to_discuss' | 'low' | 'high' | 'to_implement' | 'archived' | 'published';
           development_estimate?: number;
           created_at?: string;
           updated_at?: string;

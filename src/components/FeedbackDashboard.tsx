@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Bug, Lightbulb, MessageCircle, Search, Filter, Download } from 'lucide-react';
+import { MessageSquare, Bug, Lightbulb, MessageCircle, Search, Download, CheckCircle, Archive } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
 
 type BetaFeedback = Database['public']['Tables']['beta_feedback']['Row'];
+type FeedbackStatus = 'to_discuss' | 'low' | 'high' | 'to_implement' | 'archived'/* | 'published'*/;
 
 export function FeedbackDashboard() {
   const [feedback, setFeedback] = useState<BetaFeedback[]>([]);
@@ -12,7 +13,14 @@ export function FeedbackDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [deviceFilter, setDeviceFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  
+  // Multi-select functionality
+  const [selectedFeedback, setSelectedFeedback] = useState<string[]>([]);
+  const [bulkStatus, setBulkStatus] = useState<FeedbackStatus>('to_discuss');
+  const [isProcessing, setIsProcessing] = useState(false);
+  
   const itemsPerPage = 10;
 
   // Calculate pagination values
@@ -27,7 +35,7 @@ export function FeedbackDashboard() {
 
   useEffect(() => {
     filterFeedback();
-  }, [feedback, searchTerm, typeFilter, deviceFilter]);
+  }, [feedback, searchTerm, typeFilter, deviceFilter, statusFilter]);
 
   const fetchFeedback = async () => {
     try {
@@ -64,22 +72,87 @@ export function FeedbackDashboard() {
       filtered = filtered.filter(item => item.device_type === deviceFilter);
     }
 
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(item => item.status === statusFilter);
+    }
+
     setFilteredFeedback(filtered);
     setCurrentPage(1); // Reset to first page when filtering
   };
 
+  const updateFeedbackStatus = async (feedbackId: string, newStatus: FeedbackStatus) => {
+    try {
+      const { error } = await supabase
+        .from('beta_feedback')
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq('id', feedbackId);
+
+      if (error) throw error;
+      await fetchFeedback();
+    } catch (error) {
+      console.error('Error updating feedback status:', error);
+    }
+  };
+
+  const handleFeedbackSelection = (feedbackId: string) => {
+    setSelectedFeedback(prev =>
+      prev.includes(feedbackId)
+        ? prev.filter(id => id !== feedbackId)
+        : [...prev, feedbackId]
+    );
+  };
+
+  const selectAllVisibleFeedback = () => {
+    const visibleFeedbackIds = currentFeedback.map(item => item.id);
+    const allSelected = visibleFeedbackIds.every(id => selectedFeedback.includes(id));
+    
+    if (allSelected) {
+      setSelectedFeedback(prev => prev.filter(id => !visibleFeedbackIds.includes(id)));
+    } else {
+      setSelectedFeedback(prev => [...new Set([...prev, ...visibleFeedbackIds])]);
+    }
+  };
+
+  const updateBulkFeedbackStatus = async () => {
+    if (selectedFeedback.length === 0) return;
+    
+    setIsProcessing(true);
+    try {
+      const { error } = await supabase
+        .from('beta_feedback')
+        .update({ 
+          status: bulkStatus, 
+          updated_at: new Date().toISOString() 
+        })
+        .in('id', selectedFeedback);
+
+      if (error) throw error;
+      await fetchFeedback();
+      setSelectedFeedback([]);
+    } catch (error) {
+      console.error('Error updating feedback status:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const exportToCSV = () => {
-    const headers = ['Date', 'Type', 'Device Type', 'Device Model', 'Comment', 'Email', 'Anonymous'];
+    const feedbackToExport = selectedFeedback.length > 0 
+      ? filteredFeedback.filter(item => selectedFeedback.includes(item.id))
+      : filteredFeedback;
+    
+    const headers = ['Date', 'Type', 'Device Type', 'Device Model', 'Comment', 'Email', 'Anonymous', 'Status'];
     const csvContent = [
       headers.join(','),
-      ...filteredFeedback.map(item => [
+      ...feedbackToExport.map(item => [
         new Date(item.created_at).toLocaleDateString(),
         item.feedback_type.replace('_', ' '),
         item.device_type,
         item.device_model,
         `"${item.comment.replace(/"/g, '""')}"`, // Escape quotes in comment
         item.email || 'N/A',
-        item.is_anonymous ? 'Yes' : 'No'
+        item.is_anonymous ? 'Yes' : 'No',
+        item.status.replace('_', ' ')
       ].join(','))
     ].join('\n');
 
@@ -87,7 +160,7 @@ export function FeedbackDashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'beta-feedback.csv';
+    a.download = selectedFeedback.length > 0 ? 'selected-beta-feedback.csv' : 'beta-feedback.csv';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -113,14 +186,40 @@ export function FeedbackDashboard() {
     };
     
     const labels = {
-      bug_report: 'Bug Report',
+      bug_report: 'Bug',
       suggestion: 'Suggestion',
-      general_comment: 'General Comment',
+      general_comment: 'Comment',
     };
     
     return (
-      <span className={`px-3 py-1 rounded-md text-xs font-medium border ${styles[type as keyof typeof styles]}`}>
+      <span className={`px-2 py-1 rounded text-xs font-medium border ${styles[type as keyof typeof styles]}`}>
         {labels[type as keyof typeof labels]}
+      </span>
+    );
+  };
+
+  const getStatusBadge = (status: FeedbackStatus) => {
+    const styles = {
+      to_discuss: 'bg-gray-100 dark:bg-gray-900/30 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700',
+      low: 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-700',
+      high: 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 border-orange-200 dark:border-orange-700',
+      to_implement: 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 border-green-200 dark:border-green-700',
+      archived: 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-700'
+      // published: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-700',
+    };
+    
+    const labels = {
+      to_discuss: 'To Discuss',
+      low: 'Low Priority',
+      high: 'High Priority',
+      to_implement: 'To Implement',
+      archived: 'Archived'
+      // published: 'Published',
+    };
+    
+    return (
+      <span className={`px-3 py-1 rounded-md text-xs font-medium border ${styles[status]}`}>
+        {labels[status]}
       </span>
     );
   };
@@ -130,8 +229,10 @@ export function FeedbackDashboard() {
     const bugReports = feedback.filter(f => f.feedback_type === 'bug_report').length;
     const suggestions = feedback.filter(f => f.feedback_type === 'suggestion').length;
     const comments = feedback.filter(f => f.feedback_type === 'general_comment').length;
+    const archived = feedback.filter(f => f.status === 'archived').length;
+    // const published = feedback.filter(f => f.status === 'published').length;
 
-    return { total, bugReports, suggestions, comments };
+    return { total, bugReports, suggestions, comments, archived/*, published*/ };
   };
 
   const stats = getStats();
@@ -159,7 +260,7 @@ export function FeedbackDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
         <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-blue-100 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -199,6 +300,26 @@ export function FeedbackDashboard() {
             <MessageCircle className="h-8 w-8 text-blue-600 dark:text-blue-400" />
           </div>
         </div>
+
+        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-purple-100 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Archived</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.archived}</p>
+            </div>
+            <Archive className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+          </div>
+        </div>
+{/* 
+        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-emerald-100 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Published</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.published}</p>
+            </div>
+            <Eye className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+          </div>
+        </div> */}
       </div>
 
       {/* Filters and Actions */}
@@ -235,7 +356,20 @@ export function FeedbackDashboard() {
               <option value="all">All Devices</option>
               <option value="ios">iOS</option>
               <option value="android">Android</option>
-              {/* <option value="huawei">Huawei</option> */}
+            </select>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-md focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              <option value="all">All Statuses</option>
+              <option value="to_discuss">To Discuss</option>
+              <option value="low">Low Priority</option>
+              <option value="high">High Priority</option>
+              <option value="to_implement">To Implement</option>
+              <option value="archived">Archived</option>
+              {/* <option value="published">Published</option> */}
             </select>
           </div>
           
@@ -244,8 +378,56 @@ export function FeedbackDashboard() {
             className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 text-white rounded-md hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-600 dark:hover:to-purple-600 transition-all"
           >
             <Download className="h-4 w-4" />
-            <span>Export CSV</span>
+            <span>{selectedFeedback.length > 0 ? `Export Selected (${selectedFeedback.length})` : 'Export CSV'}</span>
           </button>
+        </div>
+      </div>
+
+      {/* Bulk Actions */}
+      <div className="mb-4 p-4 bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-sm border border-blue-100 dark:border-gray-700">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {selectedFeedback.length} feedback items selected
+            </span>
+            <button
+              onClick={selectAllVisibleFeedback}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+            >
+              {currentFeedback.every(item => selectedFeedback.includes(item.id))
+                ? 'Deselect All'
+                : 'Select All Visible'}
+            </button>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <select
+              value={bulkStatus}
+              onChange={(e) => setBulkStatus(e.target.value as FeedbackStatus)}
+              className="border border-gray-200 dark:border-gray-600 rounded-md px-4 py-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 disabled:opacity-50"
+              disabled={selectedFeedback.length === 0}
+            >
+              <option value="to_discuss">To Discuss</option>
+              <option value="low">Low Priority</option>
+              <option value="high">High Priority</option>
+              <option value="to_implement">To Implement</option>
+              <option value="archived">Archived</option>
+              {/* <option value="published">Published</option> */}
+            </select>
+            
+            <button
+              onClick={updateBulkFeedbackStatus}
+              disabled={selectedFeedback.length === 0 || isProcessing}
+              className="flex items-center space-x-2 px-4 py-1 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-500 text-white rounded-md hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-600 dark:hover:to-purple-600 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isProcessing ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              ) : (
+                <CheckCircle className="h-4 w-4" />
+              )}
+              <span>Update Status</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -253,11 +435,20 @@ export function FeedbackDashboard() {
       <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-blue-100 dark:border-gray-700 overflow-hidden">
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {currentFeedback.map((item) => (
-            <div key={item.id} className="p-6 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors">
+            <div key={item.id} className={`p-6 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors ${
+              selectedFeedback.includes(item.id) ? 'bg-blue-50/50 dark:bg-blue-900/30' : ''
+            }`}>
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedFeedback.includes(item.id)}
+                    onChange={() => handleFeedbackSelection(item.id)}
+                    className="h-4 w-4 text-blue-600 rounded border-gray-300 dark:border-gray-600 focus:ring-blue-500 dark:focus:ring-blue-400"
+                  />
                   {getFeedbackTypeIcon(item.feedback_type)}
                   {getFeedbackTypeBadge(item.feedback_type)}
+                  {getStatusBadge(item.status)}
                   <span className="text-sm text-gray-500 dark:text-gray-400">
                     {new Date(item.created_at).toLocaleDateString()} at {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
@@ -273,8 +464,27 @@ export function FeedbackDashboard() {
                 </div>
               </div>
               
-              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
+              <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4 mb-4">
                 <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{item.comment}</p>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  Last updated: {new Date(item.updated_at).toLocaleDateString()} at {new Date(item.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+                
+                <select
+                  value={item.status}
+                  onChange={(e) => updateFeedbackStatus(item.id, e.target.value as FeedbackStatus)}
+                  className="text-sm border border-gray-200 dark:border-gray-600 rounded-md px-3 py-1 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                >
+                  <option value="to_discuss">To Discuss</option>
+                  <option value="low">Low Priority</option>
+                  <option value="high">High Priority</option>
+                  <option value="to_implement">To Implement</option>
+                  <option value="archived">Archived</option>
+                  {/* <option value="published">Published</option> */}
+                </select>
               </div>
             </div>
           ))}

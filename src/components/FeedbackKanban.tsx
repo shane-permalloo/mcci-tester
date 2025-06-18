@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Bug, Lightbulb, MessageCircle, Clock, Calendar, Edit2, Save, X } from 'lucide-react';
+import { MessageSquare, Bug, Lightbulb, MessageCircle, Calendar, Edit2, Save, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
 
 type BetaFeedback = Database['public']['Tables']['beta_feedback']['Row'];
-type FeedbackStatus = 'to_discuss' | 'low' | 'high' | 'to_implement';
+type FeedbackStatus = 'to_discuss' | 'low' | 'high' | 'to_implement' /*| 'archived' | 'published'*/;
 
 interface KanbanColumn {
   id: FeedbackStatus;
@@ -42,7 +42,21 @@ const columns: KanbanColumn[] = [
     color: 'text-green-700 dark:text-green-300',
     bgColor: 'bg-green-50 dark:bg-green-900/20',
     borderColor: 'border-green-200 dark:border-green-700'
-  }
+  },
+  // {
+  //   id: 'archived',
+  //   title: 'Archived',
+  //   color: 'text-purple-700 dark:text-purple-300',
+  //   bgColor: 'bg-purple-50 dark:bg-purple-900/20',
+  //   borderColor: 'border-purple-200 dark:border-purple-700'
+  // },
+  // {
+  //   id: 'published',
+  //   title: 'Published',
+  //   color: 'text-emerald-700 dark:text-emerald-300',
+  //   bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
+  //   borderColor: 'border-emerald-200 dark:border-emerald-700'
+  // }
 ];
 
 export function FeedbackKanban() {
@@ -51,6 +65,7 @@ export function FeedbackKanban() {
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [editingEstimate, setEditingEstimate] = useState<string | null>(null);
   const [estimateValue, setEstimateValue] = useState<number>(0);
+  const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchFeedback();
@@ -61,6 +76,7 @@ export function FeedbackKanban() {
       const { data, error } = await supabase
         .from('beta_feedback')
         .select('*')
+        .in('status', ['to_discuss', 'low', 'high', 'to_implement'/*, 'archived', 'published'*/])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -229,7 +245,7 @@ export function FeedbackKanban() {
       </div>
 
       {/* Kanban Board */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {columns.map((column) => {
           const columnFeedback = getFeedbackByStatus(column.id);
           
@@ -293,9 +309,20 @@ export function FeedbackKanban() {
 
                     {/* Comment */}
                     <div className="mb-3">
-                      <p className="text-sm text-gray-800 dark:text-gray-200 line-clamp-3">
+                      <p
+                        className={`text-sm text-gray-800 dark:text-gray-200 transition-all cursor-pointer ${editingEstimate === item.id ? '' : (item.id === expandedCommentId ? '' : 'line-clamp-3')}`}
+                        onClick={() => setExpandedCommentId(item.id)}
+                      >
                         {item.comment}
                       </p>
+                      {item.id === expandedCommentId && (
+                        <button
+                          className="mt-1 text-xs text-blue-600 dark:text-blue-400 underline float-right"
+                          onClick={() => setExpandedCommentId(null)}
+                        >
+                          Show less
+                        </button>
+                      )}
                     </div>
 
                     {/* Development Estimate (only for "To Implement" column) */}
