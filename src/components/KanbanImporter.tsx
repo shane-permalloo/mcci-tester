@@ -580,14 +580,14 @@ export function KanbanImporter() {
                 <div className="flex space-x-2">
                   <button
                     onClick={exportToExcel}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 dark:hover:from-green-600 dark:hover:to-emerald-600 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-800 transition-all shadow-lg"
+                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-700 text-white rounded-lg hover:from-green-500 hover:to-emerald-700 dark:hover:from-green-600 dark:hover:to-emerald-600 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-800 transition-all duration-200 ease-in-out shadow-lg"
                   >
                     <Download className="h-4 w-4" />
                     <span>Export</span>
                   </button>
                   <button
                     onClick={resetImporter}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-gray-400 to-gray-700 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 dark:hover:from-gray-600 dark:hover:to-gray-700 focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-800 transition-all shadow-lg"
+                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-gray-400 to-gray-700 text-white rounded-lg hover:from-gray-500 hover:to-gray-700 dark:hover:from-gray-600 dark:hover:to-gray-700 focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-800 transition-all shadow-lg"
                   >
                     <Upload className="h-4 w-4" />
                     <span>New Import</span>
