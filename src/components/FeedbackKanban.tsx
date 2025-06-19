@@ -272,7 +272,7 @@ export function FeedbackKanban() {
     return feedback.filter(item => item.status === status);
   };
 
-  const getTotalManDays = () => {
+  const getTotalManHours = () => {
     return feedback
       .filter(item => item.status === 'to_implement')
       .reduce((total, item) => total + (item.development_estimate || 0), 0);
@@ -327,7 +327,7 @@ export function FeedbackKanban() {
         ];
 
         if (column.id === 'to_implement') {
-          baseRow.splice(-1, 0, (item.development_estimate || 0).toString());
+          baseRow.splice(-1, 0, `${item.development_estimate || 0} hours`);
         }
 
         return baseRow;
@@ -387,7 +387,7 @@ export function FeedbackKanban() {
           </div>
           <div className="text-right">
             <div className="text-3xl font-bold text-green-600 dark:text-green-400">
-              {getTotalManDays()} days
+              {getTotalManHours()} hours
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
               Total implementation time
@@ -482,7 +482,7 @@ export function FeedbackKanban() {
                   </span>
                   {column.id === 'to_implement' && (
                     <span className="text-sm font-medium text-green-600 dark:text-green-400">
-                      {columnFeedback.reduce((total, item) => total + (item.development_estimate || 0), 0)} days
+                      {columnFeedback.reduce((total, item) => total + (item.development_estimate || 0), 0)} hours
                     </span>
                   )}
                 </div>
@@ -563,9 +563,14 @@ export function FeedbackKanban() {
                                     type="number"
                                     min="0"
                                     max="999"
+                                    step="0.5"
                                     value={estimateValue}
-                                    onChange={(e) => setEstimateValue(parseInt(e.target.value) || 0)}
-                                    className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:border-green-400 focus:ring-2 focus:ring-green-100 dark:focus:ring-green-900/30 outline-none bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100"
+                                    onChange={(e) => setEstimateValue(parseFloat(e.target.value) || 0)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') saveEstimate(item.id)
+                                      if (e.key === 'Escape') cancelEditingEstimate()
+                                    }}
+                                    className="w-20 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:border-green-400 focus:ring-2 focus:ring-green-100 dark:focus:ring-green-900/30 outline-none bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100"
                                     autoFocus
                                   />
                                   <button
@@ -584,7 +589,7 @@ export function FeedbackKanban() {
                               ) : (
                                 <div className="flex items-center space-x-2">
                                   <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                                    {item.development_estimate || 0} days
+                                    {item.development_estimate || 0} hours
                                   </span>
                                   <button
                                     onClick={() => startEditingEstimate(item.id, item.development_estimate || 0)}

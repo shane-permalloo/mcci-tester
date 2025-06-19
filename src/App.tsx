@@ -10,6 +10,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { InvitationManager } from './components/InvitationManager';
 import { FeedbackDashboard } from './components/FeedbackDashboard';
 import { useAuth } from './hooks/useAuth';
+import { KanbanImporter } from './components/KanbanImporter';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -28,6 +29,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<BetaRegistrationForm />} />
           <Route path="/feedback" element={<FeedbackForm />} />
+          <Route path="/kanban" element={<KanbanImporter />} />
           <Route
         path="/admin"
         element={user ? <AdminDashboard /> : <AdminLogin />}
