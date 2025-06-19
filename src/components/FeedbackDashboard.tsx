@@ -260,7 +260,7 @@ export function FeedbackDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-6">
         <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-blue-100 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -323,7 +323,7 @@ export function FeedbackDashboard() {
       </div>
 
       {/* Filters and Actions */}
-      <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-blue-100 dark:border-gray-700 px-6 py-4 mb-6">
+      <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-blue-100 dark:border-gray-700 p-4 mb-4">
         <div className="flex flex-col lg:flex-row justify-between gap-4">
           <div className="flex flex-col sm:flex-row gap-4 flex-grow">
             <div className="relative flex-grow">

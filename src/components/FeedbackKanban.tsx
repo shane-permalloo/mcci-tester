@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Bug, Lightbulb, MessageCircle, Calendar, Edit2, Save, X } from 'lucide-react';
+import { MessageSquare, Bug, Lightbulb, MessageCircle, Calendar, Edit2, Save, X, Download, GripVertical } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
 
@@ -43,26 +44,14 @@ const columns: KanbanColumn[] = [
     bgColor: 'bg-green-50 dark:bg-green-900/20',
     borderColor: 'border-green-200 dark:border-green-700'
   },
-  // {
-  //   id: 'archived',
-  //   title: 'Archived',
-  //   color: 'text-purple-700 dark:text-purple-300',
-  //   bgColor: 'bg-purple-50 dark:bg-purple-900/20',
-  //   borderColor: 'border-purple-200 dark:border-purple-700'
-  // },
-  // {
-  //   id: 'published',
-  //   title: 'Published',
-  //   color: 'text-emerald-700 dark:text-emerald-300',
-  //   bgColor: 'bg-emerald-50 dark:bg-emerald-900/20',
-  //   borderColor: 'border-emerald-200 dark:border-emerald-700'
-  // }
 ];
 
 export function FeedbackKanban() {
   const [feedback, setFeedback] = useState<BetaFeedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [editingEstimate, setEditingEstimate] = useState<string | null>(null);
   const [estimateValue, setEstimateValue] = useState<number>(0);
   const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
@@ -76,7 +65,7 @@ export function FeedbackKanban() {
       const { data, error } = await supabase
         .from('beta_feedback')
         .select('*')
-        .in('status', ['to_discuss', 'low', 'high', 'to_implement'/*, 'archived', 'published'*/])
+        .in('status', ['to_discuss', 'low', 'high', 'to_implement'])
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -134,7 +123,41 @@ export function FeedbackKanban() {
 
   const handleDragStart = (e: React.DragEvent, feedbackId: string) => {
     setDraggedItem(feedbackId);
+    setIsDragging(true);
     e.dataTransfer.effectAllowed = 'move';
+    
+    // Create custom drag image
+    const draggedElement = e.currentTarget as HTMLElement;
+    const rect = draggedElement.getBoundingClientRect();
+    
+    // Clone the element for drag preview
+    const dragPreview = draggedElement.cloneNode(true) as HTMLElement;
+    dragPreview.style.width = `${rect.width}px`;
+    dragPreview.style.transform = 'rotate(5deg)';
+    dragPreview.style.opacity = '0.9';
+    dragPreview.style.boxShadow = '0 10px 25px rgba(0,0,0,0.3)';
+    dragPreview.style.borderRadius = '12px';
+    dragPreview.style.position = 'absolute';
+    dragPreview.style.top = '-1000px';
+    dragPreview.style.left = '-1000px';
+    dragPreview.style.pointerEvents = 'none';
+    dragPreview.style.zIndex = '9999';
+    
+    document.body.appendChild(dragPreview);
+    e.dataTransfer.setDragImage(dragPreview, rect.width / 2, rect.height / 2);
+    
+    // Clean up drag preview after a short delay
+    setTimeout(() => {
+      if (document.body.contains(dragPreview)) {
+        document.body.removeChild(dragPreview);
+      }
+    }, 0);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverColumn(null);
+    setIsDragging(false);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -142,12 +165,33 @@ export function FeedbackKanban() {
     e.dataTransfer.dropEffect = 'move';
   };
 
+  const handleDragEnter = (e: React.DragEvent, columnId: FeedbackStatus) => {
+    e.preventDefault();
+    setDragOverColumn(columnId);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear drag over if we're leaving the column entirely
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setDragOverColumn(null);
+    }
+  };
+
   const handleDrop = (e: React.DragEvent, newStatus: FeedbackStatus) => {
     e.preventDefault();
     if (draggedItem) {
-      updateFeedbackStatus(draggedItem, newStatus);
-      setDraggedItem(null);
+      const draggedFeedback = feedback.find(item => item.id === draggedItem);
+      if (draggedFeedback && draggedFeedback.status !== newStatus) {
+        updateFeedbackStatus(draggedItem, newStatus);
+      }
     }
+    setDraggedItem(null);
+    setDragOverColumn(null);
+    setIsDragging(false);
   };
 
   const getFeedbackTypeIcon = (type: string) => {
@@ -208,6 +252,73 @@ export function FeedbackKanban() {
     setEstimateValue(0);
   };
 
+  const exportToExcel = () => {
+    const workbook = XLSX.utils.book_new();
+
+    columns.forEach((column) => {
+      // Prepare headers
+      const headers = [
+        'Date',
+        'Type', 
+        'Device Type',
+        'Device Model',
+        'Comment',
+        'Email',
+        'Anonymous',
+        'Status'
+      ];
+
+      // Add Development Estimate column only for "To Implement" status
+      if (column.id === 'to_implement') {
+        headers.splice(-1, 0, 'Development Estimate'); // Insert before Status
+      }
+
+      // Get feedback for this status
+      const statusFeedback = feedback.filter(item => item.status === column.id);
+
+      // Prepare data rows
+      const rows = statusFeedback.map(item => {
+        const baseRow = [
+          new Date(item.created_at).toLocaleDateString(),
+          item.feedback_type.replace('_', ' '),
+          item.device_type,
+          item.device_model,
+          item.comment,
+          item.email || 'N/A',
+          item.is_anonymous ? 'Yes' : 'No',
+          item.status.replace('_', ' ')
+        ];
+
+        // Insert development estimate for "To Implement" status
+        if (column.id === 'to_implement') {
+          baseRow.splice(-1, 0, (item.development_estimate || 0).toString()); // Insert before Status
+        }
+
+        return baseRow;
+      });
+
+      // Create worksheet from array of arrays
+      const worksheetData = [headers, ...rows];
+      const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+
+      // Auto-size columns (optional enhancement)
+      const colWidths = headers.map((header, index) => {
+        const maxLength = Math.max(
+          header.length,
+          ...rows.map(row => (row[index] || '').toString().length)
+        );
+        return { wch: Math.min(maxLength + 2, 50) }; // Cap at 50 characters
+      });
+      worksheet['!cols'] = colWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(workbook, worksheet, column.title);
+    });
+
+    // Generate and download the file
+    XLSX.writeFile(workbook, 'Feedback-Kanban.xlsx');
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -220,10 +331,21 @@ export function FeedbackKanban() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent mb-2">
-          Feedback Kanban Board
-        </h1>
-        <p className="text-gray-600 dark:text-gray-300">Manage feedback priorities and development estimates</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-500 to-purple-900 bg-clip-text text-transparent mb-2">
+              Feedback Kanban Board
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300">Manage feedback priorities and development estimates</p>
+          </div>
+          <button
+            onClick={exportToExcel}
+            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 dark:from-green-500 dark:to-emerald-500 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 dark:hover:from-green-600 dark:hover:to-emerald-600 focus:ring-4 focus:ring-green-200 dark:focus:ring-green-800 transition-all shadow-lg"
+          >
+            <Download className="h-5 w-5" />
+            <span>Export to Excel</span>
+          </button>
+        </div>
       </div>
 
       {/* Total Man Days Summary */}
@@ -248,18 +370,47 @@ export function FeedbackKanban() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {columns.map((column) => {
           const columnFeedback = getFeedbackByStatus(column.id);
+          const isDropTarget = dragOverColumn === column.id;
+          const canDrop = isDragging && draggedItem;
+          const draggedFeedback = draggedItem ? feedback.find(item => item.id === draggedItem) : null;
+          const isValidDrop = draggedFeedback ? draggedFeedback.status !== column.id : true;
           
           return (
             <div
               key={column.id}
-              className={`${column.bgColor} ${column.borderColor} border-2 border-dashed rounded-lg p-4 min-h-[600px]`}
+              className={`
+                ${column.bgColor} ${column.borderColor} 
+                border-2 rounded-lg p-4 min-h-[600px] transition-all duration-200 ease-in-out
+                ${canDrop ? 'border-dashed' : 'border-solid'}
+                ${isDropTarget && isValidDrop ? 
+                  'border-blue-400 dark:border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 scale-[1.02] shadow-lg' : 
+                  canDrop && isValidDrop ? 'border-gray-300 dark:border-gray-600' : ''
+                }
+                ${isDropTarget && !isValidDrop ? 
+                  'border-red-400 dark:border-red-500 bg-red-50/50 dark:bg-red-900/20' : ''
+                }
+              `}
               onDragOver={handleDragOver}
+              onDragEnter={(e) => handleDragEnter(e, column.id)}
+              onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, column.id)}
             >
               {/* Column Header */}
               <div className="mb-4">
-                <h3 className={`font-semibold text-lg ${column.color} mb-2`}>
-                  {column.title}
+                <h3 className={`font-semibold text-lg ${column.color} mb-2 flex items-center justify-between`}>
+                  <span>{column.title}</span>
+                  {isDropTarget && isValidDrop && (
+                    <div className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 animate-pulse">
+                      <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
+                      <span className="text-xs font-normal">Drop here</span>
+                    </div>
+                  )}
+                  {isDropTarget && !isValidDrop && (
+                    <div className="flex items-center space-x-1 text-red-600 dark:text-red-400">
+                      <X className="w-3 h-3" />
+                      <span className="text-xs font-normal">Already here</span>
+                    </div>
+                  )}
                 </h3>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -275,111 +426,131 @@ export function FeedbackKanban() {
 
               {/* Feedback Cards */}
               <div className="space-y-3">
-                {columnFeedback.map((item) => (
-                  <div
-                    key={item.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, item.id)}
-                    className={`bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-600 cursor-move hover:shadow-md transition-all ${
-                      draggedItem === item.id ? 'opacity-50' : ''
-                    }`}
-                  >
-                    {/* Card Header */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center space-x-2">
-                        {getFeedbackTypeIcon(item.feedback_type)}
-                        {getFeedbackTypeBadge(item.feedback_type)}
+                {columnFeedback.map((item) => {
+                  const isBeingDragged = draggedItem === item.id;
+                  
+                  return (
+                    <div
+                      key={item.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, item.id)}
+                      onDragEnd={handleDragEnd}
+                      className={`
+                        group relative bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-600 
+                        transition-all duration-200 ease-in-out
+                        ${isBeingDragged ? 
+                          'opacity-40 scale-95 rotate-2 shadow-2xl border-blue-300 dark:border-blue-600' : 
+                          'hover:shadow-lg hover:scale-[1.02] hover:-translate-y-1 cursor-grab active:cursor-grabbing'
+                        }
+                        ${isDragging && !isBeingDragged ? 'opacity-75' : ''}
+                      `}
+                    >
+                      {/* Drag Handle */}
+                      <div className="absolute left-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                        <GripVertical className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(item.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-
-                    {/* Device Info */}
-                    <div className="mb-3">
-                      <div className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
-                        {item.device_type} - {item.device_model}
-                      </div>
-                      {!item.is_anonymous && item.email && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          {item.email}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Comment */}
-                    <div className="mb-3">
-                      <p
-                        className={`text-sm text-gray-800 dark:text-gray-200 transition-all cursor-pointer ${editingEstimate === item.id ? '' : (item.id === expandedCommentId ? '' : 'line-clamp-3')}`}
-                        onClick={() => setExpandedCommentId(item.id)}
-                      >
-                        {item.comment}
-                      </p>
-                      {item.id === expandedCommentId && (
-                        <button
-                          className="mt-1 text-xs text-blue-600 dark:text-blue-400 underline float-right"
-                          onClick={() => setExpandedCommentId(null)}
-                        >
-                          Show less
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Development Estimate (only for "To Implement" column) */}
-                    {column.id === 'to_implement' && (
-                      <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Estimate:
+                      
+                      <div className="pl-2">
+                        {/* Card Header */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center space-x-2">
+                            {getFeedbackTypeIcon(item.feedback_type)}
+                            {getFeedbackTypeBadge(item.feedback_type)}
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(item.created_at).toLocaleDateString()}
                           </span>
-                          {editingEstimate === item.id ? (
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="number"
-                                min="0"
-                                max="999"
-                                value={estimateValue}
-                                onChange={(e) => setEstimateValue(parseInt(e.target.value) || 0)}
-                                className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:border-green-400 focus:ring-2 focus:ring-green-100 dark:focus:ring-green-900/30 outline-none bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100"
-                                autoFocus
-                              />
-                              <button
-                                onClick={() => saveEstimate(item.id)}
-                                className="p-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
-                              >
-                                <Save className="h-4 w-4" />
-                              </button>
-                              <button
-                                onClick={cancelEditingEstimate}
-                                className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                                {item.development_estimate || 0} days
-                              </span>
-                              <button
-                                onClick={() => startEditingEstimate(item.id, item.development_estimate || 0)}
-                                className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                              >
-                                <Edit2 className="h-3 w-3" />
-                              </button>
+                        </div>
+
+                        {/* Device Info */}
+                        <div className="mb-3">
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
+                            {item.device_type} - {item.device_model}
+                          </div>
+                          {!item.is_anonymous && item.email && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {item.email}
                             </div>
                           )}
                         </div>
+
+                        {/* Comment */}
+                        <div className="mb-3">
+                          <p
+                            className={`text-sm text-gray-800 dark:text-gray-200 transition-all cursor-pointer ${editingEstimate === item.id ? '' : (item.id === expandedCommentId ? '' : 'line-clamp-3')}`}
+                            onClick={() => setExpandedCommentId(item.id)}
+                          >
+                            {item.comment}
+                          </p>
+                          {item.id === expandedCommentId && (
+                            <button
+                              className="mt-1 text-xs text-blue-600 dark:text-blue-400 underline float-right"
+                              onClick={() => setExpandedCommentId(null)}
+                            >
+                              Show less
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Development Estimate (only for "To Implement" column) */}
+                        {column.id === 'to_implement' && (
+                          <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Estimate:
+                              </span>
+                              {editingEstimate === item.id ? (
+                                <div className="flex items-center space-x-2">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="999"
+                                    value={estimateValue}
+                                    onChange={(e) => setEstimateValue(parseInt(e.target.value) || 0)}
+                                    className="w-16 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:border-green-400 focus:ring-2 focus:ring-green-100 dark:focus:ring-green-900/30 outline-none bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() => saveEstimate(item.id)}
+                                    className="p-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                                  >
+                                    <Save className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={cancelEditingEstimate}
+                                    className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                                    {item.development_estimate || 0} days
+                                  </span>
+                                  <button
+                                    onClick={() => startEditingEstimate(item.id, item.development_estimate || 0)}
+                                    className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                  >
+                                    <Edit2 className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
 
                 {columnFeedback.length === 0 && (
-                  <div className="text-center py-8">
+                  <div className={`text-center py-8 transition-all duration-200 ${
+                    isDropTarget && isValidDrop ? 'scale-105' : ''
+                  }`}>
                     <MessageSquare className="h-8 w-8 text-gray-400 dark:text-gray-500 mx-auto mb-2" />
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      No feedback in this column
+                      {isDropTarget && isValidDrop ? 'Drop feedback here' : 'No feedback in this column'}
                     </p>
                   </div>
                 )}
@@ -390,4 +561,4 @@ export function FeedbackKanban() {
       </div>
     </div>
   );
-}
+};
