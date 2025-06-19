@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
 
 type BetaFeedback = Database['public']['Tables']['beta_feedback']['Row'];
-type FeedbackStatus = 'to_discuss' | 'low' | 'high' | 'to_implement' /*| 'archived' | 'published'*/;
+type FeedbackStatus = 'to_discuss' | 'low' | 'high' | 'to_implement';
 
 interface KanbanColumn {
   id: FeedbackStatus;
@@ -15,7 +15,7 @@ interface KanbanColumn {
   borderColor: string;
 }
 
-const columns: KanbanColumn[] = [
+const defaultColumns: KanbanColumn[] = [
   {
     id: 'to_discuss',
     title: 'To Discuss',
@@ -55,9 +55,13 @@ export function FeedbackKanban() {
   const [editingEstimate, setEditingEstimate] = useState<string | null>(null);
   const [estimateValue, setEstimateValue] = useState<number>(0);
   const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
+  const [columns, setColumns] = useState<KanbanColumn[]>(defaultColumns);
+  const [editingColumnTitle, setEditingColumnTitle] = useState<string | null>(null);
+  const [columnTitleValue, setColumnTitleValue] = useState<string>('');
 
   useEffect(() => {
     fetchFeedback();
+    loadColumnTitles();
   }, []);
 
   const fetchFeedback = async () => {
@@ -77,6 +81,49 @@ export function FeedbackKanban() {
     }
   };
 
+  const loadColumnTitles = () => {
+    const savedTitles = localStorage.getItem('kanban-column-titles');
+    if (savedTitles) {
+      try {
+        const parsedTitles = JSON.parse(savedTitles);
+        setColumns(prev => prev.map(col => ({
+          ...col,
+          title: parsedTitles[col.id] || col.title
+        })));
+      } catch (error) {
+        console.error('Error loading column titles:', error);
+      }
+    }
+  };
+
+  const saveColumnTitles = (newColumns: KanbanColumn[]) => {
+    const titles = newColumns.reduce((acc, col) => {
+      acc[col.id] = col.title;
+      return acc;
+    }, {} as Record<string, string>);
+    localStorage.setItem('kanban-column-titles', JSON.stringify(titles));
+  };
+
+  const startEditingColumnTitle = (columnId: string, currentTitle: string) => {
+    setEditingColumnTitle(columnId);
+    setColumnTitleValue(currentTitle);
+  };
+
+  const saveColumnTitle = (columnId: string) => {
+    const newColumns = columns.map(col => 
+      col.id === columnId ? { ...col, title: columnTitleValue.trim() || col.title } : col
+    );
+    setColumns(newColumns);
+    saveColumnTitles(newColumns);
+    setEditingColumnTitle(null);
+    setColumnTitleValue('');
+  };
+
+  const cancelEditingColumnTitle = () => {
+    setEditingColumnTitle(null);
+    setColumnTitleValue('');
+  };
+
   const updateFeedbackStatus = async (feedbackId: string, newStatus: FeedbackStatus) => {
     try {
       const { error } = await supabase
@@ -86,7 +133,6 @@ export function FeedbackKanban() {
 
       if (error) throw error;
       
-      // Update local state
       setFeedback(prev => 
         prev.map(item => 
           item.id === feedbackId 
@@ -108,7 +154,6 @@ export function FeedbackKanban() {
 
       if (error) throw error;
       
-      // Update local state
       setFeedback(prev => 
         prev.map(item => 
           item.id === feedbackId 
@@ -126,11 +171,9 @@ export function FeedbackKanban() {
     setIsDragging(true);
     e.dataTransfer.effectAllowed = 'move';
     
-    // Create custom drag image
     const draggedElement = e.currentTarget as HTMLElement;
     const rect = draggedElement.getBoundingClientRect();
     
-    // Clone the element for drag preview
     const dragPreview = draggedElement.cloneNode(true) as HTMLElement;
     dragPreview.style.width = `${rect.width}px`;
     dragPreview.style.transform = 'rotate(5deg)';
@@ -146,7 +189,6 @@ export function FeedbackKanban() {
     document.body.appendChild(dragPreview);
     e.dataTransfer.setDragImage(dragPreview, rect.width / 2, rect.height / 2);
     
-    // Clean up drag preview after a short delay
     setTimeout(() => {
       if (document.body.contains(dragPreview)) {
         document.body.removeChild(dragPreview);
@@ -171,7 +213,6 @@ export function FeedbackKanban() {
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
-    // Only clear drag over if we're leaving the column entirely
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
@@ -256,7 +297,6 @@ export function FeedbackKanban() {
     const workbook = XLSX.utils.book_new();
 
     columns.forEach((column) => {
-      // Prepare headers
       const headers = [
         'Date',
         'Type', 
@@ -268,15 +308,12 @@ export function FeedbackKanban() {
         'Status'
       ];
 
-      // Add Development Estimate column only for "To Implement" status
       if (column.id === 'to_implement') {
-        headers.splice(-1, 0, 'Development Estimate'); // Insert before Status
+        headers.splice(-1, 0, 'Development Estimate');
       }
 
-      // Get feedback for this status
       const statusFeedback = feedback.filter(item => item.status === column.id);
 
-      // Prepare data rows
       const rows = statusFeedback.map(item => {
         const baseRow = [
           new Date(item.created_at).toLocaleDateString(),
@@ -289,33 +326,28 @@ export function FeedbackKanban() {
           item.status.replace('_', ' ')
         ];
 
-        // Insert development estimate for "To Implement" status
         if (column.id === 'to_implement') {
-          baseRow.splice(-1, 0, (item.development_estimate || 0).toString()); // Insert before Status
+          baseRow.splice(-1, 0, (item.development_estimate || 0).toString());
         }
 
         return baseRow;
       });
 
-      // Create worksheet from array of arrays
       const worksheetData = [headers, ...rows];
       const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
 
-      // Auto-size columns (optional enhancement)
       const colWidths = headers.map((header, index) => {
         const maxLength = Math.max(
           header.length,
           ...rows.map(row => (row[index] || '').toString().length)
         );
-        return { wch: Math.min(maxLength + 2, 50) }; // Cap at 50 characters
+        return { wch: Math.min(maxLength + 2, 50) };
       });
       worksheet['!cols'] = colWidths;
 
-      // Add worksheet to workbook
       XLSX.utils.book_append_sheet(workbook, worksheet, column.title);
     });
 
-    // Generate and download the file
     XLSX.writeFile(workbook, 'Feedback-Kanban.xlsx');
   };
 
@@ -329,7 +361,6 @@ export function FeedbackKanban() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
@@ -348,7 +379,6 @@ export function FeedbackKanban() {
         </div>
       </div>
 
-      {/* Total Man Days Summary */}
       <div className="mb-6 bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-green-100 dark:border-gray-700 p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -366,7 +396,6 @@ export function FeedbackKanban() {
         </div>
       </div>
 
-      {/* Kanban Board */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {columns.map((column) => {
           const columnFeedback = getFeedbackByStatus(column.id);
@@ -379,7 +408,7 @@ export function FeedbackKanban() {
             <div
               key={column.id}
               className={`
-                ${column.bgColor} ${column.borderColor} 
+                group ${column.bgColor} ${column.borderColor} 
                 border-2 rounded-lg p-4 min-h-[600px] transition-all duration-200 ease-in-out
                 ${canDrop ? 'border-dashed' : 'border-solid'}
                 ${isDropTarget && isValidDrop ? 
@@ -395,23 +424,58 @@ export function FeedbackKanban() {
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, column.id)}
             >
-              {/* Column Header */}
               <div className="mb-4">
-                <h3 className={`font-semibold text-lg ${column.color} mb-2 flex items-center justify-between`}>
-                  <span>{column.title}</span>
+                <div className={`font-semibold text-lg ${column.color} mb-2 flex items-center justify-between`}>
+                  {editingColumnTitle === column.id ? (
+                    <div className="flex items-center space-x-2 flex-1">
+                      <input
+                        type="text"
+                        value={columnTitleValue}
+                        onChange={(e) => setColumnTitleValue(e.target.value)}
+                        className="flex-1 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveColumnTitle(column.id);
+                          if (e.key === 'Escape') cancelEditingColumnTitle();
+                        }}
+                      />
+                      <button
+                        onClick={() => saveColumnTitle(column.id)}
+                        className="p-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
+                      >
+                        <Save className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={cancelEditingColumnTitle}
+                        className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="flex-1">{column.title}</span>
+                      <button
+                        onClick={() => startEditingColumnTitle(column.id, column.title)}
+                        className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </button>
+                    </>
+                  )}
                   {isDropTarget && isValidDrop && (
-                    <div className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 animate-pulse">
+                    <div className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 animate-pulse ml-2">
                       <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
                       <span className="text-xs font-normal">Drop here</span>
                     </div>
                   )}
                   {isDropTarget && !isValidDrop && (
-                    <div className="flex items-center space-x-1 text-red-600 dark:text-red-400">
+                    <div className="flex items-center space-x-1 text-red-600 dark:text-red-400 ml-2">
                       <X className="w-3 h-3" />
                       <span className="text-xs font-normal">Already here</span>
                     </div>
                   )}
-                </h3>
+                </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500 dark:text-gray-400">
                     {columnFeedback.length} items
@@ -424,7 +488,6 @@ export function FeedbackKanban() {
                 </div>
               </div>
 
-              {/* Feedback Cards */}
               <div className="space-y-3">
                 {columnFeedback.map((item) => {
                   const isBeingDragged = draggedItem === item.id;
@@ -445,13 +508,11 @@ export function FeedbackKanban() {
                         ${isDragging && !isBeingDragged ? 'opacity-75' : ''}
                       `}
                     >
-                      {/* Drag Handle */}
                       <div className="absolute left-2 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                         <GripVertical className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                       </div>
                       
                       <div className="pl-2">
-                        {/* Card Header */}
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center space-x-2">
                             {getFeedbackTypeIcon(item.feedback_type)}
@@ -462,7 +523,6 @@ export function FeedbackKanban() {
                           </span>
                         </div>
 
-                        {/* Device Info */}
                         <div className="mb-3">
                           <div className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">
                             {item.device_type} - {item.device_model}
@@ -474,7 +534,6 @@ export function FeedbackKanban() {
                           )}
                         </div>
 
-                        {/* Comment */}
                         <div className="mb-3">
                           <p
                             className={`text-sm text-gray-800 dark:text-gray-200 transition-all cursor-pointer ${editingEstimate === item.id ? '' : (item.id === expandedCommentId ? '' : 'line-clamp-3')}`}
@@ -492,7 +551,6 @@ export function FeedbackKanban() {
                           )}
                         </div>
 
-                        {/* Development Estimate (only for "To Implement" column) */}
                         {column.id === 'to_implement' && (
                           <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
                             <div className="flex items-center justify-between">
@@ -561,4 +619,4 @@ export function FeedbackKanban() {
       </div>
     </div>
   );
-};
+}
