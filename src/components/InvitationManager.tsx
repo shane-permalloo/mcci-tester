@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Send, ExternalLink, Smartphone, AlertCircle, CheckCircle, Download } from 'lucide-react';
+import { Send, ExternalLink, Smartphone, AlertCircle, CheckCircle, Download, MessageSquare } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
-import { sendEmail, generateInvitationEmailContent } from '../services/emailService';
+import { sendEmail, generateInvitationEmailContent, generateFeedbackInvitationEmailContent } from '../services/emailService';
 
 type BetaTester = Database['public']['Tables']['beta_testers']['Row'];
 type BetaInvitation = Database['public']['Tables']['beta_invitations']['Row'];
@@ -34,9 +34,17 @@ export function InvitationManager() {
  
    // Add new state variables
    const [isGeneratingCSV, setIsGeneratingCSV] = useState(false);
+   const [isSendingFeedbackInvitations, setIsSendingFeedbackInvitations] = useState(false);
 
   // Add a new state variable for tracking email sending
   const [emailSendingStatus, setEmailSendingStatus] = useState<{
+    total: number;
+    sent: number;
+    failed: number;
+  } | null>(null);
+
+  // Add state for feedback invitation email sending status
+  const [feedbackEmailSendingStatus, setFeedbackEmailSendingStatus] = useState<{
     total: number;
     sent: number;
     failed: number;
@@ -441,6 +449,82 @@ export function InvitationManager() {
     }
   };
 
+  // Add new function to send feedback invitations to all registered testers
+  const sendFeedbackInvitations = async () => {
+    setIsSendingFeedbackInvitations(true);
+    setMessage(null);
+
+    try {
+      const { data: allTesters, error: testersError } = await supabase
+        .from('beta_testers')
+        .select('*')
+        .eq('status', 'invited') // to change to approved after testing
+        .order('created_at', { ascending: false });
+
+      if (testersError) throw testersError;
+      if (!allTesters || allTesters.length === 0) {
+        setMessage({ type: 'error', text: 'No registered testers found.' });
+        return;
+      }
+
+      setFeedbackEmailSendingStatus({ total: allTesters.length, sent: 0, failed: 0 });
+
+      // Send emails to each tester
+      let sentCount = 0;
+      let failedCount = 0;
+      
+      // Construct the feedback URL (assuming it's /feedback)
+      const feedbackUrl = `${window.location.origin}/feedback`;
+      
+      // Send emails in sequence to avoid rate limits
+      for (const tester of allTesters) {
+        const emailContent = generateFeedbackInvitationEmailContent(
+          tester.full_name,
+          feedbackUrl
+        );
+        
+        const emailSent = await sendEmail({
+          to: tester.email,
+          subject: 'Share Your Feedback - Help Us Improve Our App!',
+          html: emailContent
+        });
+        
+        if (emailSent) {
+          sentCount++;
+        } else {
+          failedCount++;
+        }
+        
+        // Update status after each email
+        setFeedbackEmailSendingStatus({
+          total: allTesters.length,
+          sent: sentCount,
+          failed: failedCount
+        });
+      }
+
+      // Set final message
+      if (failedCount === 0) {
+        setMessage({
+          type: 'success',
+          text: `Successfully sent ${sentCount} feedback invitation email(s) to all registered testers.`
+        });
+      } else {
+        setMessage({
+          type: 'error',
+          text: `Sent ${sentCount} feedback invitation(s), but failed to send ${failedCount} invitation(s). Please try again for the failed ones.`
+        });
+      }
+
+    } catch (error) {
+      console.error('Error sending feedback invitations:', error);
+      setMessage({ type: 'error', text: 'Failed to send feedback invitations. Please try again.' });
+    } finally {
+      setIsSendingFeedbackInvitations(false);
+      setFeedbackEmailSendingStatus(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -453,10 +537,35 @@ export function InvitationManager() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
-          Beta Invitation Manager
-        </h1>
-        <p className="text-gray-600 dark:text-gray-300">Send beta testing invitations to approved testers</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-400 dark:to-orange-400 bg-clip-text text-transparent mb-2">
+              Beta Invitation Manager
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300">Send beta testing invitations to approved testers</p>
+          </div>
+          
+          {/* Feedback Invitation Button */}
+          <button
+            onClick={sendFeedbackInvitations}
+            disabled={isSendingFeedbackInvitations}
+            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 dark:from-purple-500 dark:to-indigo-500 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 dark:hover:from-purple-600 dark:hover:to-indigo-600 focus:ring-4 focus:ring-purple-200 dark:focus:ring-purple-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSendingFeedbackInvitations ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                {feedbackEmailSendingStatus && (
+                  <span className="text-xs">
+                    {feedbackEmailSendingStatus.sent}/{feedbackEmailSendingStatus.total}
+                  </span>
+                )}
+              </>
+            ) : (
+              <MessageSquare className="h-5 w-5" />
+            )}
+            <span>Send invites for Feedback</span>
+          </button>
+        </div>
       </div>
 
       {/* Status Message */}

@@ -217,3 +217,73 @@ export const generateInvitationEmailContent = (
     </div>
   `;
 };
+
+export const generateFeedbackInvitationEmailContent = (
+  testerName: string,
+  feedbackUrl: string,
+  appName: string = 'MCCI Tax Refund System'
+): string => {
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>We Need Your Feedback on ${appName}!</h2>
+      
+      <p>Hello ${testerName},</p>
+      
+      <p>Thank you for being part of our beta testing program! Your experience and insights are invaluable to us.</p>
+      
+      <p>We would love to hear about your experience using the <strong>${appName}</strong> app. Your feedback helps us improve the app and make it better for everyone.</p>
+      
+      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #F59E0B;">
+        <h3 style="color: #333; margin-top: 0;">💬 Share Your Feedback</h3>
+        
+        <p style="margin-bottom: 15px;">Please take a few minutes to share your thoughts about:</p>
+        
+        <ul style="margin: 0; padding-left: 20px; color: #555;">
+          <li style="margin-bottom: 8px;">What features you liked most</li>
+          <li style="margin-bottom: 8px;">Any bugs or issues you encountered</li>
+          <li style="margin-bottom: 8px;">Suggestions for improvements</li>
+          <li style="margin-bottom: 8px;">Overall user experience</li>
+          <li style="margin-bottom: 8px;">Any other comments or observations</li>
+        </ul>
+      </div>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="${feedbackUrl}" 
+           style="display: inline-block; background: linear-gradient(135deg, #F59E0B, #D97706); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);">
+          📝 Submit Your Feedback
+        </a>
+      </div>
+      
+      <div style="background-color: #e8f5e8; padding: 15px; border-radius: 6px; border: 1px solid #c3e6c3; margin: 20px 0;">
+        <p style="margin: 0; font-size: 14px; color: #2c5530;">
+          <strong>🎯 Why Your Feedback Matters:</strong><br>
+          • Helps us identify and fix bugs before the official release<br>
+          • Guides us in improving user experience and app functionality<br>
+          • Ensures the app meets the needs of our users<br>
+          • Makes you a valuable contributor to the app's development
+        </p>
+      </div>
+      
+      <div style="background-color: #fff3cd; padding: 15px; border-radius: 6px; border: 1px solid #ffeaa7; margin: 20px 0;">
+        <p style="margin: 0; font-size: 14px; color: #856404;">
+          <strong>⏰ Quick & Easy:</strong><br>
+          The feedback form is designed to be quick and easy to complete. It should only take a few minutes of your time, but your input will have a lasting impact on the app's quality.
+        </p>
+      </div>
+      
+      <p>If you have any technical issues accessing the feedback form or need assistance, please don't hesitate to contact us.</p>
+      
+      <p>Thank you for your time and for being an essential part of our beta testing community!</p>
+      
+      <div style="background-color: #d1ecf1; padding: 15px; border-radius: 6px; margin-top: 20px; border: 1px solid #bee5eb;">
+        <p style="margin: 0; font-size: 14px; color: #0c5460;">
+          <strong>🆘 Need Help?</strong><br>
+          If you have any questions or need assistance:<br>
+          • Contact <a href="mailto:shane.permalloo@mns.mu" style="color: #0c5460;">MNS team</a> - we're here to help!<br>
+        </p>
+      </div>
+      
+      <p>Best regards,<br>The MNS Team</p>
+    </div>
+  `;
+};
