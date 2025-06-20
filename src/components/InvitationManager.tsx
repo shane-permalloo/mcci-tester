@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Send, ExternalLink, Smartphone, AlertCircle, CheckCircle, Download, MessageSquare } from 'lucide-react';
+import { Send, ExternalLink, Smartphone, AlertCircle, CheckCircle, Download, MessageSquare, Check } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
 import { sendEmail, generateInvitationEmailContent, generateFeedbackInvitationEmailContent } from '../services/emailService';
@@ -49,6 +49,9 @@ export function InvitationManager() {
     sent: number;
     failed: number;
   } | null>(null);
+
+  // Add state to track successful resends
+  const [successfulResends, setSuccessfulResends] = useState<Set<string>>(new Set());
 
   // Define getFilteredTesters function before using it
   const getFilteredTesters = () => {
@@ -342,7 +345,7 @@ export function InvitationManager() {
       // Update tester status to 'invited'
       const { error: updateError } = await supabase
         .from('beta_testers')
-        .update({ status: 'invited' })
+        .update({ status: 'approved' })
         .in('id', selectedTesters);
 
       if (updateError) throw updateError;
@@ -427,6 +430,18 @@ export function InvitationManager() {
           .eq('id', invitation.id);
         
         if (updateError) throw updateError;
+        
+        // Add to successful resends set
+        setSuccessfulResends(prev => new Set(prev).add(invitation.id));
+        
+        // Remove from successful resends after 2 seconds
+        setTimeout(() => {
+          setSuccessfulResends(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(invitation.id);
+            return newSet;
+          });
+        }, 2000);
         
         setMessage({
           type: 'success',
@@ -874,10 +889,19 @@ export function InvitationManager() {
                     <button
                       onClick={() => resendInvitation(invitation)}
                       disabled={isProcessing}
-                      className="px-3 py-1 text-sm bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 rounded-md hover:bg-yellow-200 dark:hover:bg-yellow-800/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`px-3 py-1 text-sm rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1 ${
+                        successfulResends.has(invitation.id)
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                          : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-800/50'
+                      }`}
                     >
                       {isProcessing ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-yellow-800 dark:border-yellow-300 border-t-transparent" />
+                      ) : successfulResends.has(invitation.id) ? (
+                        <>
+                          <Check className="h-4 w-4" />
+                          <span>Sent</span>
+                        </>
                       ) : (
                         'Resend'
                       )}
