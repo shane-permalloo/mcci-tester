@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Smartphone, Clock, CheckCircle, Download, Search } from 'lucide-react';
+import { Users, Smartphone, Clock, CheckCircle, Download, Search, XOctagonIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/supabase';
 
@@ -132,10 +132,11 @@ export function AdminDashboard() {
   const getStats = () => {
     const total = testers.length;
     const pending = testers.filter(t => t.status === 'pending').length;
-    const active = testers.filter(t => t.status === 'active').length;
+    const active = testers.filter(t => t.status === 'active' || t.status === 'invited').length;
     const approved = testers.filter(t => t.status === 'approved').length;
+    const declined = testers.filter(t => t.status === 'declined').length;
 
-    return { total, pending, active, approved };
+    return { total, pending, active, approved, declined };
   };
 
   const stats = getStats();
@@ -206,7 +207,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-yellow-100 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -244,6 +245,16 @@ export function AdminDashboard() {
               <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.active}</p>
             </div>
             <Smartphone className="h-8 w-8 text-green-600 dark:text-green-400" />
+          </div>
+        </div>
+
+        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-red-100 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Declined Testers</p>
+              <p className="text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.declined}</p>
+            </div>
+            <XOctagonIcon className="h-8 w-8 text-red-600 dark:text-red-400" />
           </div>
         </div>
       </div>
