@@ -78,6 +78,7 @@ export function KanbanImporter() {
   const [modalCommentValue, setModalCommentValue] = useState<string>('');
   const [modalWorkType, setModalWorkType] = useState<'backend' | 'frontend' | 'both' | 'others'>('backend');
   const [modalWorkTypeOther, setModalWorkTypeOther] = useState<string>('');
+  const [modalEstimate, setModalEstimate] = useState<number>(0);
  
    // Prevent default drag behaviors on document
    React.useEffect(() => {
@@ -276,6 +277,16 @@ export function KanbanImporter() {
     );
   };
 
+  const updateDevelopmentEstimateModal = (feedbackId: string, estimate: number) => {
+    setFeedback(prev => 
+      prev.map(item => 
+        item.id === feedbackId 
+          ? { ...item, development_estimate: estimate > 0 ? estimate : undefined }
+          : item
+      )
+    );
+  };
+
   const handleDragStart = (e: React.DragEvent, feedbackId: string) => {
     setDraggedItem(feedbackId);
     setIsDragging(true);
@@ -449,6 +460,7 @@ export function KanbanImporter() {
     setModalCommentValue(feedback.implementation_comment || '');
     setModalWorkType(feedback.work_type || 'backend');
     setModalWorkTypeOther(feedback.work_type_other || '');
+    setModalEstimate(feedback.development_estimate || 0);
   };
 
   const closeFeedbackModal = () => {
@@ -456,6 +468,7 @@ export function KanbanImporter() {
     setModalCommentValue('');
     setModalWorkType('backend');
     setModalWorkTypeOther('');
+    setModalEstimate(0);
   };
 
   // Handle keyboard events for modal
@@ -480,8 +493,15 @@ export function KanbanImporter() {
         return;
       }
       
+      // Validate estimate (must be positive number)
+      if (modalEstimate < 0) {
+        alert('Development estimate must be a positive number.');
+        return;
+      }
+      
       updateImplementationComment(selectedFeedback.id, modalCommentValue);
       updateWorkType(selectedFeedback.id, modalWorkType, modalWorkType === 'others' ? modalWorkTypeOther : undefined);
+      updateDevelopmentEstimateModal(selectedFeedback.id, modalEstimate);
       closeFeedbackModal();
     }
   };
@@ -672,16 +692,20 @@ export function KanbanImporter() {
                     </div>
                   </div>
                   
-                  {(selectedFeedback.development_estimate !== undefined && selectedFeedback.development_estimate > 0) && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Development Estimate
-                      </label>
-                      <p className="text-lg font-semibold text-green-600 dark:text-green-400">
-                        {selectedFeedback.development_estimate} hours
-                      </p>
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Development Estimate (hours)
+                    </label>
+                    <input
+                      type="number"
+                      value={modalEstimate}
+                      onChange={(e) => setModalEstimate(Math.max(0, parseFloat(e.target.value) || 0))}
+                      min="0"
+                      step="0.5"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      placeholder="Enter hours (e.g., 2.5)"
+                    />
+                  </div>
                 </div>
                 
                 {/* Right Column - Implementation Details */}
