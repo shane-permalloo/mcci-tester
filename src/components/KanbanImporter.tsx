@@ -13,6 +13,7 @@ interface ImportedFeedback {
   description: string;
   status: FeedbackStatus;
   development_estimate?: number;
+  implementation_comment?: string;
   created_at: string;
 }
 
@@ -64,12 +65,15 @@ export function KanbanImporter() {
   const [isDragging, setIsDragging] = useState(false);
   const [editingEstimate, setEditingEstimate] = useState<string | null>(null);
   const [estimateValue, setEstimateValue] = useState<number>(0);
+
   const [expandedCommentId, setExpandedCommentId] = useState<string | null>(null);
   const [columns, setColumns] = useState<KanbanColumn[]>(defaultColumns);
   const [editingColumnTitle, setEditingColumnTitle] = useState<string | null>(null);
   const [columnTitleValue, setColumnTitleValue] = useState<string>('');
   const [isDragOver, setIsDragOver] = useState(false);
   const [columnToDelete, setColumnToDelete] = useState<KanbanColumn | null>(null);
+  const [selectedFeedback, setSelectedFeedback] = useState<ImportedFeedback | null>(null);
+  const [modalCommentValue, setModalCommentValue] = useState<string>('');
  
    // Prevent default drag behaviors on document
    React.useEffect(() => {
@@ -121,7 +125,7 @@ export function KanbanImporter() {
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
         const requiredHeaders = ['type', 'module', 'title', 'description', 'status'];
         
-        const missingHeaders = requiredHeaders.filter(header => 
+        const missingHeaders = requiredHeaders.filter(header =>
           !headers.some(h => h.includes(header))
         );
         
@@ -135,6 +139,7 @@ export function KanbanImporter() {
         const titleIndex = headers.findIndex(h => h.includes('title'));
         const descriptionIndex = headers.findIndex(h => h.includes('description'));
         const statusIndex = headers.findIndex(h => h.includes('status'));
+        const estimateIndex = headers.findIndex(h => h.includes('development_estimate') || h.includes('estimate'));
 
         const parsedFeedback: ImportedFeedback[] = [];
         
@@ -157,6 +162,15 @@ export function KanbanImporter() {
           else if (statusValue?.includes('high')) status = 'high';
           else if (statusValue?.includes('implement')) status = 'to_implement';
 
+          // Parse development estimate if present
+          let developmentEstimate: number | undefined = undefined;
+          if (estimateIndex !== -1 && values[estimateIndex] && values[estimateIndex].trim() !== '') {
+            const estimateValue = parseFloat(values[estimateIndex].replace(/[^\d.]/g, ''));
+            if (!isNaN(estimateValue) && estimateValue > 0) {
+              developmentEstimate = estimateValue;
+            }
+          }
+
           parsedFeedback.push({
             id: `imported-${Date.now()}-${i}`,
             type,
@@ -164,7 +178,8 @@ export function KanbanImporter() {
             title: values[titleIndex] || 'Untitled',
             description: values[descriptionIndex] || 'No description',
             status, // Use the computed status
-            development_estimate: 0,
+            development_estimate: developmentEstimate,
+            implementation_comment: '',
             created_at: new Date().toISOString()
           });
         }
@@ -230,6 +245,16 @@ export function KanbanImporter() {
       prev.map(item => 
         item.id === feedbackId 
           ? { ...item, development_estimate: estimate }
+          : item
+      )
+    );
+  };
+
+  const updateImplementationComment = (feedbackId: string, comment: string) => {
+    setFeedback(prev => 
+      prev.map(item => 
+        item.id === feedbackId 
+          ? { ...item, implementation_comment: comment }
           : item
       )
     );
@@ -403,6 +428,37 @@ export function KanbanImporter() {
     setEstimateValue(0);
   };
 
+  const openFeedbackModal = (feedback: ImportedFeedback) => {
+    setSelectedFeedback(feedback);
+    setModalCommentValue(feedback.implementation_comment || '');
+  };
+
+  const closeFeedbackModal = () => {
+    setSelectedFeedback(null);
+    setModalCommentValue('');
+  };
+
+  // Handle keyboard events for modal
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedFeedback) {
+        closeFeedbackModal();
+      }
+    };
+
+    if (selectedFeedback) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [selectedFeedback]);
+
+  const saveModalComment = () => {
+    if (selectedFeedback) {
+      updateImplementationComment(selectedFeedback.id, modalCommentValue);
+      closeFeedbackModal();
+    }
+  };
+
   const exportToExcel = () => {
     const workbook = XLSX.utils.book_new();
 
@@ -417,7 +473,7 @@ export function KanbanImporter() {
       ];
 
       if (column.id === 'to_implement') {
-        headers.splice(-1, 0, 'Development Estimate');
+        headers.splice(-1, 0, 'Development Estimate', 'Implementation Comment');
       }
 
       const statusFeedback = feedback.filter(item => item.status === column.id);
@@ -433,7 +489,7 @@ export function KanbanImporter() {
         ];
 
         if (column.id === 'to_implement') {
-          baseRow.splice(-1, 0, `${item.development_estimate || 0} hours`);
+          baseRow.splice(-1, 0, `${item.development_estimate || 0} hours`, item.implementation_comment || '');
         }
 
         return baseRow;
@@ -466,11 +522,11 @@ export function KanbanImporter() {
 
   const downloadSampleCSV = () => {
     const sampleData = [
-      ['Type', 'Module', 'Title', 'Description', 'Status'],
-      ['bug_report', 'Authentication', 'Login fails with special characters', 'Users cannot login when password contains special characters like @#$', 'to_discuss'],
-      ['suggestion', 'UI/UX', 'Add dark mode toggle', 'Users would like a dark mode option in the settings menu', 'low'],
-      ['general_comment', 'Performance', 'Page loads slowly', 'The dashboard takes more than 5 seconds to load on mobile devices', 'high'],
-      ['bug_report', 'Database', 'Data not saving correctly', 'User profile changes are not being persisted to the database', 'to_implement']
+      ['Type', 'Module', 'Title', 'Description', 'Status', 'Development_Estimate'],
+      ['bug_report', 'Authentication', 'Login fails with special characters', 'Users cannot login when password contains special characters like @#$', 'to_discuss', '2'],
+      ['suggestion', 'UI/UX', 'Add dark mode toggle', 'Users would like a dark mode option in the settings menu', 'low', '8'],
+      ['general_comment', 'Performance', 'Page loads slowly', 'The dashboard takes more than 5 seconds to load on mobile devices', 'high', ''],
+      ['bug_report', 'Database', 'Data not saving correctly', 'User profile changes are not being persisted to the database', 'to_implement', '4']
     ];
 
     const csvContent = sampleData.map(row => 
@@ -517,6 +573,122 @@ export function KanbanImporter() {
           </div>
         </div>
       )}
+
+      {selectedFeedback && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-gray-200 dark:border-gray-600">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-600">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Feedback Additional Details</h2>
+              <button
+                onClick={closeFeedbackModal}
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 rounded-lg transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Column - Feedback Details */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    {getFeedbackTypeIcon(selectedFeedback.type)}
+                    {getFeedbackTypeBadge(selectedFeedback.type)}
+                  </div>
+                  
+                  <div>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      {selectedFeedback.title}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Module
+                    </label>
+                    <p className="text-gray-800 dark:text-gray-200">
+                      {selectedFeedback.module}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Description
+                    </label>
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                      <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                        {selectedFeedback.description}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Status
+                      </label>
+                      <p className="text-gray-800 dark:text-gray-200 capitalize">
+                        {selectedFeedback.status.replace('_', ' ')}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Created Date
+                      </label>
+                      <p className="text-gray-800 dark:text-gray-200">
+                        {new Date(selectedFeedback.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {(selectedFeedback.development_estimate !== undefined && selectedFeedback.development_estimate > 0) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Development Estimate
+                      </label>
+                      <p className="text-lg font-semibold text-green-600 dark:text-green-400">
+                        {selectedFeedback.development_estimate} hours
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Right Column - Implementation Comment */}
+                <div className="space-y-4">
+                  <div className='flex flex-col h-full'>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Implementation Comment
+                    </label>
+                    <textarea
+                      value={modalCommentValue}
+                      onChange={(e) => setModalCommentValue(e.target.value)}
+                      className="w-full h-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none"
+                      placeholder="Add implementation details, notes, or comments here..."
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end space-x-3 p-4 border-t border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50">
+              <button
+                onClick={closeFeedbackModal}
+                className="px-6 py-2 rounded-md shadow-lg bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-700 hover:to-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveModalComment}
+                className="px-6 py-2 rounded-md shadow-lg bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
@@ -599,6 +771,7 @@ export function KanbanImporter() {
                 <li>• <strong>Title:</strong> Brief title of the feedback</li>
                 <li>• <strong>Description:</strong> Detailed description</li>
                 <li>• <strong>Status:</strong> to_discuss, low, high, or to_implement</li>
+                <li>• <strong>Development_Estimate:</strong> <em>(Optional)</em> Estimated hours for development</li>
               </ul>
             </div>
           </div>
@@ -803,7 +976,7 @@ export function KanbanImporter() {
                               )}
                             </div>
 
-                            {column.id === 'to_implement' && (
+                            {(column.id === 'to_implement' || (item.development_estimate !== undefined && item.development_estimate > 0)) && (
                               <div className="border-t border-gray-200 dark:border-gray-600 pt-3">
                                 <div className="flex items-center justify-between">
                                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -841,17 +1014,43 @@ export function KanbanImporter() {
                                   ) : (
                                     <div className="flex items-center space-x-2">
                                       <span className="text-sm font-semibold text-green-600 dark:text-green-400">
-                                        {item.development_estimate || 0} hours
+                                        {item.development_estimate !== undefined && item.development_estimate > 0 
+                                          ? `${item.development_estimate} hours` 
+                                          : (column.id === 'to_implement' ? 'Not estimated' : '')
+                                        }
                                       </span>
-                                      <button
-                                        onClick={() => startEditingEstimate(item.id, item.development_estimate || 0)}
-                                        className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                                      >
-                                        <Edit2 className="h-3 w-3" />
-                                      </button>
+                                      {column.id === 'to_implement' && (
+                                        <button
+                                          onClick={() => startEditingEstimate(item.id, item.development_estimate || 0)}
+                                          className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                        >
+                                          <Edit2 className="h-3 w-3" />
+                                        </button>
+                                      )}
                                     </div>
                                   )}
                                 </div>
+                              </div>
+                            )}
+
+                            {column.id === 'to_implement' && (
+                              <div className="border-t border-gray-200 dark:border-gray-600 pt-3 mt-3">
+                                <button
+                                  onClick={() => openFeedbackModal(item)}
+                                  className={`w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-lg transition-colors border ${
+                                    item.implementation_comment 
+                                      ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700 hover:bg-green-100 dark:hover:bg-green-900/30'
+                                      : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                                  }`}
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                  <span className="text-sm font-medium">
+                                    {item.implementation_comment ? 'View/Edit Details' : 'Add Details'}
+                                  </span>
+                                  {item.implementation_comment && (
+                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                  )}
+                                </button>
                               </div>
                             )}
                           </div>
