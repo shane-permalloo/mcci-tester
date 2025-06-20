@@ -44,7 +44,6 @@ export const sendEmail = async (emailData: EmailData): Promise<boolean> => {
 export const generateInvitationEmailContent = (
   testerName: string,
   platformName: string,
-  invitationLink: string,
   appName: string = 'MCCI Tax Refund System'
 ): string => {
   return `
@@ -57,6 +56,8 @@ export const generateInvitationEmailContent = (
       
       <p><strong>Important:</strong> The testing link will be sent by the Google Playstore or Apple Store and will be made available as from 
       the <span style="color: #F59E0B; font-weight: bold;">June 23rd, 2025</span>.</p>
+
+      <p><strong>Important:</strong> Once you have accepted the invitation, you will be able to access the app from the ${platformName} store.</p>
       
       <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #F59E0B;">
         <h3 style="color: #333; margin-top: 0;">📱 How to Install the Mobile App - Step by Step Guide</h3>
@@ -64,126 +65,116 @@ export const generateInvitationEmailContent = (
         <div style="margin-bottom: 30px;">
           <h4 style="color: #333; margin-bottom: 15px; background-color: #e8f5e8; padding: 10px; border-radius: 5px;">🤖 For Android Phone Users (Samsung, Google Pixel, etc.):</h4>
           
-          <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #2c5530;">Step 1: Find the Google Play Store</p>
-            <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • Look for the colorful triangle icon on your phone's home screen<br>
-              • It's usually labeled "Play Store" or "Google Play"<br>
-              • If you can't find it, swipe up from the bottom of your screen to see all apps
+          <div style="background-color: #fff9e6; padding: 12px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #ffa500;">
+            <p style="margin: 0; font-size: 14px; color: #b8860b;">
+              <strong>📧 Important:</strong> You will receive a separate email with a special Google Play testing link. Please check your email!
             </p>
           </div>
           
           <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #2c5530;">Step 2: Open the Play Store</p>
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #2c5530;">Step 1: Check Your Email for the Testing Link</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • Tap once on the Play Store icon<br>
-              • Wait for it to load (this may take a few seconds)
+              • Look for an email from Google Play or MNS team<br>
+              • The email will contain a special link to join the internal testing program<br>
+              • This link looks like: "https://play.google.com/apps/testing/[app-package-name]"
             </p>
           </div>
           
           <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #2c5530;">Step 3: Search for the App</p>
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #2c5530;">Step 2: Join the Internal Testing Program</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • At the top of the screen, you'll see a search bar<br>
-              • Tap on it and type: "<strong>${appName}</strong>"<br>
+              • Tap on the testing link from your email<br>
+              • This will open a webpage in your browser<br>
+              • Tap <strong>"Become a tester"</strong> button<br>
+              • You'll see a confirmation that you've joined the testing program
             </p>
           </div>
           
           <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #2c5530;">Step 4: Install the App</p>
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #2c5530;">Step 3: Download from Google Play Store</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • Find "${appName}" in the search results<br>
-              • Tap on it to open the app page<br>
-              • Make sure that the following is written "${appName} - (Internal Beta)"<br>
-              • The following notice should also be displayed: "You're an internal tester. This appmay be unsecure and unstable."<br>
+              • After joining, tap <strong>"Download it on Google Play"</strong> on the same webpage<br>
+              • This will open the Google Play Store app<br>
+              • Alternatively, find the colorful triangle "Play Store" icon on your phone
+            </p>
+          </div>
+          
+          <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #2c5530;">Step 4: Install the Beta App</p>
+            <p style="margin: 0; font-size: 14px; line-height: 1.5;">
+              • You can search for the "${appName}" in the search bar<br>
+              • You should now see "${appName}" in the Play Store<br>
+              • Watch out for the "(Internal Beta)" label next to the app name<br>
+              • Look for text saying "You're a beta tester for this app"<br>
               • Tap the <strong>"Install"</strong> button<br>
               • Wait for the download to complete (you'll see a progress bar)
+              • PS: <strong>If the previous application was installed</strong>, you may need to manually uninstall it first to avoid any issues.
             </p>
           </div>
           
           <div style="background-color: white; padding: 15px; border-radius: 5px;">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #2c5530;">Step 5: Open the App</p>
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #2c5530;">Step 5: Open and Use the App</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
               • Once installed, tap <strong>"Open"</strong> or find the app icon on your home screen<br>
-              • The app is now ready to use!
+              • The app is now ready to use for testing!<br>
+              • You may see a "Beta" label on the app icon
             </p>
           </div>
         </div>
         
         <div style="margin-bottom: 20px;">
-          <h4 style="color: #333; margin-bottom: 15px; background-color: #e8f0ff; padding: 10px; border-radius: 5px;">🍎 For iPhone/iPad Users - TestFlight Installation:</h4>
+          <h4 style="color: #333; margin-bottom: 15px; background-color: #e8f0ff; padding: 10px; border-radius: 5px;">🍎 For IOS Users - TestFlight Installation:</h4>
           
           <div style="background-color: #fff9e6; padding: 12px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #ffa500;">
             <p style="margin: 0; font-size: 14px; color: #b8860b;">
-              <strong>📧 Important:</strong> You will receive TWO separate emails from Apple for the TestFlight process. Please follow both!
+              <strong>📧 Important:</strong> You will receive a TestFlight invitation email from Apple. Please check your email!
             </p>
           </div>
           
           <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 1: Accept the First Invitation</p>
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 1: Download TestFlight App First</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • You will receive an email invitation from Apple<br>
-              • Open the email and tap <strong>"Accept Invitation"</strong><br>
-              • This will take you to a webpage where you need to sign in
-            </p>
-          </div>
-          
-          <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 2: Sign in with Your Apple ID</p>
-            <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • Enter your Apple ID email address<br>
-              • Enter your Apple ID password<br>
-              • Complete any two-factor authentication if prompted<br>
-              • <em>This is the same Apple ID you use for the App Store</em>
-            </p>
-          </div>
-          
-          <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 3: Wait for the Second Email</p>
-            <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • After signing in, our developer will add you to the specific app testing group<br>
-              • You will receive a <strong>second email</strong> from Apple<br>
-              • This second email will have instructions to download TestFlight<br>
-              • <em>This may take a few minutes to arrive</em>
-            </p>
-          </div>
-          
-          <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 4: Download TestFlight App</p>
-            <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • Look for the blue "App Store" icon on your home screen<br>
-              • Tap to open it<br>
+              • Find the blue "App Store" icon on your home screen and tap it<br>
               • Search for "TestFlight" (it's a free app by Apple)<br>
-              • Tap <strong>"Get"</strong> to download it<br>
+              • Tap <strong>"Get"</strong> to download TestFlight<br>
               • Wait for it to install completely
             </p>
           </div>
           
           <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 5: Open TestFlight and Find the App</p>
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 2: Check Your Email for TestFlight Invitation</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • Open the TestFlight app (blue icon with white airplane)<br>
-              • You should see "${appName}" listed in your available apps<br>
-              • If you don't see it, wait a few more minutes and refresh<br>
-              • Tap on "${appName}" when it appears
+              • Look for an email from "TestFlight" or "App Store Connect"<br>
+              • The subject will be something like "You're invited to test ${appName}"<br>
+              • Open this email on your iPhone (not on a computer)
             </p>
           </div>
           
           <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 6: Install the Beta App</p>
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 3: Accept the TestFlight Invitation</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • In TestFlight, tap the <strong>"Install"</strong> button next to "${appName}"<br>
+              • In the invitation email, tap <strong>"View in TestFlight"</strong> or <strong>"Start Testing"</strong><br>
+              • This will open the TestFlight app automatically<br>
+              • If prompted, tap <strong>"Accept"</strong> to join the beta test
+            </p>
+          </div>
+          
+          <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 4: Install the Beta App</p>
+            <p style="margin: 0; font-size: 14px; line-height: 1.5;">
+              • In TestFlight, you should see "${appName}" listed<br>
+              • Tap the <strong>"Install"</strong> button next to the app<br>
               • Wait for the download to complete (you'll see a progress circle)<br>
               • The app icon will appear on your home screen when ready
             </p>
           </div>
           
           <div style="background-color: white; padding: 15px; border-radius: 5px;">
-            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 7: Open and Use the App</p>
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 5: Open and Use the App</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • Find the "${appName}" icon on your home screen<br>
-              • Tap to open it<br>
+              • Find the "${appName}" icon on your home screen and tap it<br>
               • The app is now ready to use for testing!<br>
+              • You'll see a small orange dot on the app icon indicating it's a beta version<br>
               • <em>You can also open it directly from TestFlight</em>
             </p>
           </div>
@@ -208,8 +199,6 @@ export const generateInvitationEmailContent = (
           </p>
         </div>
       </div>
-      
-      <p>You can access the beta version of our app on ${platformName} by clicking the link below:</p>
       
       <p>We appreciate your help in making our app better!</p>
       

@@ -184,7 +184,7 @@ export function BetaRegistrationForm() {
         {/* Feedback Button */}
         <div className="absolute top-4 left-4 z-50 group transition-all duration-300">
           <Link
-            to="/"
+            to="/feedback"
             aria-label="Send feedback"
             title="Send feedback"
             className="p-3 flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-500 dark:to-purple-600 backdrop-blur-lg border border-purple-100 dark:border-gray-700 text-gray-300 hover:text-white rounded-full transition-all shadow-lg"

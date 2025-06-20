@@ -563,7 +563,7 @@ export function InvitationManager() {
             ) : (
               <MessageSquare className="h-5 w-5" />
             )}
-            <span>Send invites for Feedback</span>
+            <span>Send Invites for Feedback</span>
           </button>
         </div>
       </div>
