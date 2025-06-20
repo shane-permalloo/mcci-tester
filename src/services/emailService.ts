@@ -45,7 +45,7 @@ export const generateInvitationEmailContent = (
   testerName: string,
   platformName: string,
   invitationLink: string,
-  appName: string = 'MCCI Beta Testing'
+  appName: string = 'MCCI Tax Refund System'
 ): string => {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -55,7 +55,8 @@ export const generateInvitationEmailContent = (
       
       <p>Thank you for signing up to be a beta tester. You've been selected to participate in our beta testing program!</p>
       
-      <p><strong>Important:</strong> The testing link will be available starting from <span style="color: #F59E0B; font-weight: bold;">June 23rd, 2025</span>.</p>
+      <p><strong>Important:</strong> The testing link will be sent by the Google Playstore or Apple Store and will be made available as from 
+      the <span style="color: #F59E0B; font-weight: bold;">June 23rd, 2025</span>.</p>
       
       <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #F59E0B;">
         <h3 style="color: #333; margin-top: 0;">📱 How to Install the Mobile App - Step by Step Guide</h3>
@@ -85,7 +86,6 @@ export const generateInvitationEmailContent = (
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
               • At the top of the screen, you'll see a search bar<br>
               • Tap on it and type: "<strong>${appName}</strong>"<br>
-              • Tap the magnifying glass icon or "Search" button
             </p>
           </div>
           
@@ -94,7 +94,9 @@ export const generateInvitationEmailContent = (
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
               • Find "${appName}" in the search results<br>
               • Tap on it to open the app page<br>
-              • Tap the green <strong>"Install"</strong> button<br>
+              • Make sure that the following is written "${appName} - (Internal Beta)"<br>
+              • The following notice should also be displayed: "You're an internal tester. This appmay be unsecure and unstable."<br>
+              • Tap the <strong>"Install"</strong> button<br>
               • Wait for the download to complete (you'll see a progress bar)
             </p>
           </div>
@@ -202,31 +204,16 @@ export const generateInvitationEmailContent = (
             <strong>🆘 Need Help?</strong><br>
             If you get stuck at any step or have questions:<br>
             • Ask a tech-savvy friend or family member to help<br>
-            • Contact our support team - we're here to help!<br>
-            • Take a screenshot of any error messages and send them to us
+            • Contact <a href="mailto:shane.permalloo@mns.mu">MNS team</a> - we're here to help!<br>
           </p>
         </div>
       </div>
       
       <p>You can access the beta version of our app on ${platformName} by clicking the link below:</p>
       
-      <p style="text-align: center;">
-        <a href="${invitationLink}" style="display: inline-block; background-color: #F59E0B; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
-          Join Beta Test
-        </a>
-      </p>
-      
-      <p>Or copy this link: <a href="${invitationLink}">${invitationLink}</a></p>
-      
-      <div style="background-color: #e3f2fd; padding: 15px; border-radius: 6px; margin: 20px 0;">
-        <p style="margin: 0; font-size: 14px; color: #1565c0;">
-          <strong>💡 Need Help?</strong> If you encounter any issues during installation or have questions about the beta testing process, please don't hesitate to contact our support team.
-        </p>
-      </div>
-      
       <p>We appreciate your help in making our app better!</p>
       
-      <p>Best regards,<br>The Development Team</p>
+      <p>Best regards,<br>The MNS Team</p>
     </div>
   `;
 };
