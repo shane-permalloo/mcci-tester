@@ -495,20 +495,20 @@ export function KanbanImporter() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-8 max-w-md w-full border border-gray-200 dark:border-gray-400">
             <div className="flex flex-col items-center text-center">
               <AlertTriangle className="h-16 w-16 text-yellow-500 dark:text-yellow-400 mb-4" />
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Delete Column?</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Delete Group?</h2>
               <p className="text-gray-600 dark:text-gray-300 mb-6">
                 Are you sure you want to delete the "{columnToDelete.title}" group? All feedback items in this group will be moved to the first group. This action cannot be undone.
               </p>
               <div className="flex justify-center gap-4">
                 <button
                   onClick={() => setColumnToDelete(null)}
-                  className="px-6 py-2 rounded-md shadow-lg bg-gradient-to-r from-gray-400 to-gray-700 text-white hover:from-gray-500 hover:to-gray-700 transition-colors"
+                  className="px-6 py-2 rounded-md shadow-lg bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmDeleteColumn}
-                  className="px-6 py-2 rounded-md shadow-lg bg-gradient-to-r from-red-500 to-red-700 text-white hover:from-red-600 hover:to-red-800 transition-colors"
+                  className="px-6 py-2 rounded-md shadow-lg bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 transition-colors"
                 >
                   Delete
                 </button>
@@ -520,7 +520,7 @@ export function KanbanImporter() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-blue-800 bg-clip-text text-transparent mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-blue-700 bg-clip-text text-transparent mb-2">
               Feedbacks collected
             </h1>
           </div>
@@ -625,14 +625,14 @@ export function KanbanImporter() {
                 <div className="flex space-x-2">
                   <button
                     onClick={exportToExcel}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-700 text-white rounded-lg hover:from-green-500 hover:to-emerald-700 dark:hover:from-green-600 dark:hover:to-emerald-600 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-800 transition-all duration-200 ease-in-out shadow-lg"
+                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-400 to-emerald-600 text-white rounded-lg hover:from-green-500 hover:to-emerald-700 dark:hover:from-green-600 dark:hover:to-emerald-700 focus:ring-2 focus:ring-green-200 dark:focus:ring-green-800 transition-all duration-200 ease-in-out shadow-lg"
                   >
                     <Download className="h-4 w-4" />
                     <span>Export</span>
                   </button>
                   <button
                     onClick={resetImporter}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-gray-400 to-gray-700 text-white rounded-lg hover:from-gray-500 hover:to-gray-700 dark:hover:from-gray-600 dark:hover:to-gray-700 focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-800 transition-all shadow-lg"
+                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg hover:from-gray-500 hover:to-gray-700 dark:hover:from-gray-600 dark:hover:to-gray-700 focus:ring-2 focus:ring-gray-200 dark:focus:ring-gray-800 transition-all shadow-lg"
                   >
                     <Upload className="h-4 w-4" />
                     <span>New Import</span>

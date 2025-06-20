@@ -412,13 +412,13 @@ export function FeedbackKanban() {
               <div className="flex justify-center gap-4">
                 <button
                   onClick={() => setColumnToDelete(null)}
-                  className="px-6 py-2 rounded-md shadow-lg bg-gradient-to-r from-gray-400 to-gray-700 text-white hover:from-gray-500 hover:to-gray-700 transition-colors"
+                  className="px-6 py-2 rounded-md shadow-lg bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={confirmDeleteColumn}
-                  className="px-6 py-2 rounded-md shadow-lg bg-gradient-to-r from-red-500 to-red-700 text-white hover:from-red-600 hover:to-red-800 transition-colors"
+                  className="px-6 py-2 rounded-md shadow-lg bg-gradient-to-r from-red-600 to-red-700 text-white hover:from-red-700 hover:to-red-800 transition-colors"
                 >
                   Delete
                 </button>
@@ -430,7 +430,7 @@ export function FeedbackKanban() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-500 to-purple-900 bg-clip-text text-transparent mb-2">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-700 bg-clip-text text-transparent mb-2">
               Feedback Kanban Board
             </h1>
             <p className="text-gray-600 dark:text-gray-300">Manage feedback priorities and development estimates</p>
@@ -490,7 +490,7 @@ export function FeedbackKanban() {
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, column.id)}
             >
-              <div className="mb-4">
+              <div className="mb-4 relative">
                 <div className={`font-semibold text-lg ${column.color} mb-2 flex items-center justify-between`}>
                   {editingColumnTitle === column.id ? (
                     <div className="flex items-center space-x-2 flex-1">

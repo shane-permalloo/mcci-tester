@@ -442,7 +442,7 @@ export function AdminDashboard() {
 
       {/* Pagination */}
       {filteredTesters.length > 15 && (
-        <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
                 <span>Show</span>
                 <select

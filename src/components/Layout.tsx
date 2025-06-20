@@ -19,7 +19,7 @@ export function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-gray-200 to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-yellow-900 transition-colors duration-300">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-100 via-gray-200 to-orange-100 dark:from-gray-900 dark:via-gray-800 dark:to-yellow-900 transition-colors duration-300">
       {isAdmin && (
         <nav className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg border-b border-yellow-100 dark:border-gray-700 sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
