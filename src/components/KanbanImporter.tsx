@@ -14,6 +14,8 @@ interface ImportedFeedback {
   status: FeedbackStatus;
   development_estimate?: number;
   implementation_comment?: string;
+  work_type?: 'backend' | 'frontend' | 'both' | 'others';
+  work_type_other?: string;
   created_at: string;
 }
 
@@ -74,6 +76,8 @@ export function KanbanImporter() {
   const [columnToDelete, setColumnToDelete] = useState<KanbanColumn | null>(null);
   const [selectedFeedback, setSelectedFeedback] = useState<ImportedFeedback | null>(null);
   const [modalCommentValue, setModalCommentValue] = useState<string>('');
+  const [modalWorkType, setModalWorkType] = useState<'backend' | 'frontend' | 'both' | 'others'>('backend');
+  const [modalWorkTypeOther, setModalWorkTypeOther] = useState<string>('');
  
    // Prevent default drag behaviors on document
    React.useEffect(() => {
@@ -180,6 +184,8 @@ export function KanbanImporter() {
             status, // Use the computed status
             development_estimate: developmentEstimate,
             implementation_comment: '',
+            work_type: undefined,
+            work_type_other: undefined,
             created_at: new Date().toISOString()
           });
         }
@@ -255,6 +261,16 @@ export function KanbanImporter() {
       prev.map(item => 
         item.id === feedbackId 
           ? { ...item, implementation_comment: comment }
+          : item
+      )
+    );
+  };
+
+  const updateWorkType = (feedbackId: string, workType: 'backend' | 'frontend' | 'both' | 'others', workTypeOther?: string) => {
+    setFeedback(prev => 
+      prev.map(item => 
+        item.id === feedbackId 
+          ? { ...item, work_type: workType, work_type_other: workTypeOther }
           : item
       )
     );
@@ -431,11 +447,15 @@ export function KanbanImporter() {
   const openFeedbackModal = (feedback: ImportedFeedback) => {
     setSelectedFeedback(feedback);
     setModalCommentValue(feedback.implementation_comment || '');
+    setModalWorkType(feedback.work_type || 'backend');
+    setModalWorkTypeOther(feedback.work_type_other || '');
   };
 
   const closeFeedbackModal = () => {
     setSelectedFeedback(null);
     setModalCommentValue('');
+    setModalWorkType('backend');
+    setModalWorkTypeOther('');
   };
 
   // Handle keyboard events for modal
@@ -454,7 +474,14 @@ export function KanbanImporter() {
 
   const saveModalComment = () => {
     if (selectedFeedback) {
+      // Validate work type
+      if (modalWorkType === 'others' && modalWorkTypeOther.trim() === '') {
+        alert('Please specify the work type when "Others" is selected.');
+        return;
+      }
+      
       updateImplementationComment(selectedFeedback.id, modalCommentValue);
+      updateWorkType(selectedFeedback.id, modalWorkType, modalWorkType === 'others' ? modalWorkTypeOther : undefined);
       closeFeedbackModal();
     }
   };
@@ -473,7 +500,7 @@ export function KanbanImporter() {
       ];
 
       if (column.id === 'to_implement') {
-        headers.splice(-1, 0, 'Development Estimate', 'Implementation Comment');
+        headers.splice(-1, 0, 'Development Estimate', 'Implementation Comment', 'Work Type');
       }
 
       const statusFeedback = feedback.filter(item => item.status === column.id);
@@ -489,7 +516,10 @@ export function KanbanImporter() {
         ];
 
         if (column.id === 'to_implement') {
-          baseRow.splice(-1, 0, `${item.development_estimate || 0} hours`, item.implementation_comment || '');
+          const workTypeDisplay = item.work_type === 'others' && item.work_type_other 
+            ? `Others: ${item.work_type_other}` 
+            : item.work_type ? item.work_type.charAt(0).toUpperCase() + item.work_type.slice(1) : '';
+          baseRow.splice(-1, 0, `${item.development_estimate || 0} hours`, item.implementation_comment || '', workTypeDisplay);
         }
 
         return baseRow;
@@ -654,16 +684,55 @@ export function KanbanImporter() {
                   )}
                 </div>
                 
-                {/* Right Column - Implementation Comment */}
-                <div className="space-y-4">
-                  <div className='flex flex-col h-full'>
+                {/* Right Column - Implementation Details */}
+                <div className="space-y-4 flex flex-col h-full">
+                  {/* Work Type Dropdown */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Work Type <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={modalWorkType}
+                      onChange={(e) => {
+                        setModalWorkType(e.target.value as 'backend' | 'frontend' | 'both' | 'others');
+                        if (e.target.value !== 'others') {
+                          setModalWorkTypeOther('');
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    >
+                      <option value="backend">Back-end</option>
+                      <option value="frontend">Front-end</option>
+                      <option value="both">Both</option>
+                      <option value="others">Others</option>
+                    </select>
+                  </div>
+
+                  {/* Conditional text field for Others */}
+                  {modalWorkType === 'others' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Specify Work Type <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={modalWorkTypeOther}
+                        onChange={(e) => setModalWorkTypeOther(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                        placeholder="Please specify the work type..."
+                      />
+                    </div>
+                  )}
+
+                  {/* Implementation Comment */}
+                  <div className='flex flex-col flex-1'>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Implementation Comment
                     </label>
                     <textarea
                       value={modalCommentValue}
                       onChange={(e) => setModalCommentValue(e.target.value)}
-                      className="w-full h-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none"
+                      className="w-full flex-1 p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 resize-none"
                       placeholder="Add implementation details, notes, or comments here..."
                     />
                   </div>
