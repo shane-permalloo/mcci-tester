@@ -17,7 +17,7 @@ export function AdminDashboard() {
   const [bulkStatus, setBulkStatus] = useState<BetaTester['status']>('pending');
   const [currentPage, setCurrentPage] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
-  const testersPerPage = 10;
+  const [testersPerPage, setTestersPerPage] = useState(10);
 
   // Calculate pagination values
   const indexOfLastTester = currentPage * testersPerPage;
@@ -442,9 +442,27 @@ export function AdminDashboard() {
 
       {/* Pagination */}
       {filteredTesters.length > 15 && (
-        <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            Showing {indexOfFirstTester + 1}-{Math.min(indexOfLastTester, filteredTesters.length)} of {filteredTesters.length} testers
+        <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                <span>Show</span>
+                <select
+                    id="itemsPerPage"
+                    value={testersPerPage}
+                    onChange={(e) => {
+                        setTestersPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                    }}
+                    className="px-2 py-1 border border-gray-200 dark:border-gray-600 rounded-md focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                >
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <span>entries</span>
+                <span className="hidden sm:inline-block pl-4">
+                  Showing {indexOfFirstTester + 1}-{Math.min(indexOfLastTester, filteredTesters.length)} of {filteredTesters.length} testers
+                </span>
           </div>
           <div className="flex items-center space-x-2">
             <button

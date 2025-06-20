@@ -31,7 +31,7 @@ export function Layout({ children }: LayoutProps) {
                     MCCI Testers
                   </span>
                 </Link>
-                <div className="hidden md:flex space-x-6">
+                <div className="hidden md:flex space-x-4">
                   <Link
                     to="/admin"
                     className={`flex items-center space-x-2 px-4 py-2 rounded-md transition-all ${

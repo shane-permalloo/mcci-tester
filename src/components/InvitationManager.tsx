@@ -6,10 +6,17 @@ import { sendEmail, generateInvitationEmailContent } from '../services/emailServ
 
 type BetaTester = Database['public']['Tables']['beta_testers']['Row'];
 type BetaInvitation = Database['public']['Tables']['beta_invitations']['Row'];
+type InvitationWithTester = BetaInvitation & {
+  beta_testers: {
+    id: string;
+    full_name: string;
+    email: string;
+  } | null;
+};
 
 export function InvitationManager() {
   const [approvedTesters, setApprovedTesters] = useState<BetaTester[]>([]);
-  const [invitations, setInvitations] = useState<BetaInvitation[]>([]);
+  const [invitations, setInvitations] = useState<InvitationWithTester[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTesters, setSelectedTesters] = useState<string[]>([]);
   const [selectedPlatform, setSelectedPlatform] = useState<'google_play' | 'app_store'>('google_play');
@@ -20,15 +27,13 @@ export function InvitationManager() {
   // Add pagination state
   const [currentTesterPage, setCurrentTesterPage] = useState(1);
   const [currentInvitationPage, setCurrentInvitationPage] = useState(1);
-  const itemsPerPage = 10;
-
-  // Add new state variables
-  const [isGeneratingCSV, setIsGeneratingCSV] = useState(false);
-  const [pushResult, setPushResult] = useState<{
-    success: boolean;
-    platform: string;
-    count: number;
-  } | null>(null);
+  const [testersPerPage, setTestersPerPage] = useState(10);
+  const [invitationsPerPage, setInvitationsPerPage] = useState(10);
+  const [testerSearchTerm, setTesterSearchTerm] = useState('');
+  const [invitationSearchTerm, setInvitationSearchTerm] = useState('');
+ 
+   // Add new state variables
+   const [isGeneratingCSV, setIsGeneratingCSV] = useState(false);
 
   // Add a new state variable for tracking email sending
   const [emailSendingStatus, setEmailSendingStatus] = useState<{
@@ -52,17 +57,29 @@ export function InvitationManager() {
   };
 
   // Calculate pagination values for testers
-  const filteredTesters = getFilteredTesters();
-  const indexOfLastTester = currentTesterPage * itemsPerPage;
-  const indexOfFirstTester = indexOfLastTester - itemsPerPage;
+  const filteredTesters = getFilteredTesters().filter(
+    (tester) =>
+      tester.full_name.toLowerCase().includes(testerSearchTerm.toLowerCase()) ||
+      tester.email.toLowerCase().includes(testerSearchTerm.toLowerCase())
+  );
+  const indexOfLastTester = currentTesterPage * testersPerPage;
+  const indexOfFirstTester = indexOfLastTester - testersPerPage;
   const currentTesters = filteredTesters.slice(indexOfFirstTester, indexOfLastTester);
-  const totalTesterPages = Math.ceil(filteredTesters.length / itemsPerPage);
+  const totalTesterPages = Math.ceil(filteredTesters.length / testersPerPage);
 
   // Calculate pagination values for invitations
-  const indexOfLastInvitation = currentInvitationPage * itemsPerPage;
-  const indexOfFirstInvitation = indexOfLastInvitation - itemsPerPage;
-  const currentInvitations = invitations.slice(indexOfFirstInvitation, indexOfLastInvitation);
-  const totalInvitationPages = Math.ceil(invitations.length / itemsPerPage);
+  const filteredInvitations = invitations.filter((invitation) => {
+    const tester = invitation.beta_testers;
+    if (!tester) return false;
+    return (
+      tester.full_name.toLowerCase().includes(invitationSearchTerm.toLowerCase()) ||
+      tester.email.toLowerCase().includes(invitationSearchTerm.toLowerCase())
+    );
+  });
+  const indexOfLastInvitation = currentInvitationPage * invitationsPerPage;
+  const indexOfFirstInvitation = indexOfLastInvitation - invitationsPerPage;
+  const currentInvitations = filteredInvitations.slice(indexOfFirstInvitation, indexOfLastInvitation);
+  const totalInvitationPages = Math.ceil(filteredInvitations.length / invitationsPerPage);
 
   // Add pagination functions
   const changeTesterPage = (pageNumber: number) => {
@@ -103,7 +120,7 @@ export function InvitationManager() {
       if (invitationsResult.error) throw invitationsResult.error;
 
       setApprovedTesters(testersResult.data || []);
-      setInvitations(invitationsResult.data || []);
+      setInvitations((invitationsResult.data as InvitationWithTester[]) || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -147,18 +164,10 @@ export function InvitationManager() {
 
     try {
       // Get selected tester data
-      const selectedTesterData = approvedTesters.filter(tester => 
+      const selectedTesterData = approvedTesters.filter(tester =>
         selectedTesters.includes(tester.id)
       );
       
-      // Create invitation records for database
-      const invitationData = selectedTesters.map(testerId => ({
-        tester_id: testerId,
-        platform: selectedPlatform,
-        invitation_link: generateInvitationLink(selectedPlatform, appId),
-        status: 'sent' as const,
-      }));
-
       // Send emails to each tester
       let sentCount = 0;
       let failedCount = 0;
@@ -549,18 +558,27 @@ export function InvitationManager() {
       {/* Testers List */}
       <div className="mb-4 bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-yellow-100 dark:border-gray-700 overflow-hidden">
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">
               Approved Testers ({filteredTesters.length})
             </h2>
-            <button
-              onClick={selectAllTesters}
-              className="text-sm text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 font-medium"
-            >
-              {filteredTesters.every(tester => selectedTesters.includes(tester.id))
-                ? 'Deselect All'
-                : 'Select All'}
-            </button>
+            <div className="flex items-center space-x-4">
+              <input
+                type="text"
+                placeholder="Search testers..."
+                value={testerSearchTerm}
+                onChange={(e) => setTesterSearchTerm(e.target.value)}
+                className="px-3 py-2 w-full sm:w-auto border border-gray-200 dark:border-gray-600 rounded-md focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 dark:focus:ring-yellow-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+              />
+              <button
+                onClick={selectAllTesters}
+                className="text-sm text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 font-medium"
+              >
+                {currentTesters.length > 0 && currentTesters.every(tester => selectedTesters.includes(tester.id))
+                  ? 'Deselect All Visible'
+                  : 'Select All Visible'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -616,10 +634,28 @@ export function InvitationManager() {
         </div>
 
         {/* Add pagination for testers */}
-        {filteredTesters.length > 15 && (
-          <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Showing {indexOfFirstTester + 1}-{Math.min(indexOfLastTester, filteredTesters.length)} of {filteredTesters.length} testers
+        {filteredTesters.length > 0 && (
+          <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                <span>Show</span>
+                <select
+                    id="testersPerPage"
+                    value={testersPerPage}
+                    onChange={(e) => {
+                        setTestersPerPage(Number(e.target.value));
+                        setCurrentTesterPage(1);
+                    }}
+                    className="px-2 py-1 border border-gray-200 dark:border-gray-600 rounded-md focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 dark:focus:ring-yellow-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                >
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <span>entries</span>
+                <span className="hidden sm:inline-block pl-4">
+                  Showing {indexOfFirstTester + 1}-{Math.min(indexOfLastTester, filteredTesters.length)} of {filteredTesters.length}
+                </span>
             </div>
             <div className="flex items-center space-x-2">
               <button
@@ -681,13 +717,22 @@ export function InvitationManager() {
       {invitations.length > 0 && (
         <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-yellow-100 dark:border-gray-700 overflow-hidden">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Recent Invitations</h2>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-200">Recent Invitations ({filteredInvitations.length})</h2>
+              <input
+                  type="text"
+                  placeholder="Search invitations..."
+                  value={invitationSearchTerm}
+                  onChange={(e) => setInvitationSearchTerm(e.target.value)}
+                  className="px-3 py-2 w-full sm:w-auto border border-gray-200 dark:border-gray-600 rounded-md focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 dark:focus:ring-yellow-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+              />
+            </div>
           </div>
           
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {currentInvitations.map((invitation) => {
               // Get tester information from the joined data
-              const tester = invitation.beta_testers || approvedTesters.find(t => t.id === invitation.tester_id);
+              const tester = invitation.beta_testers;
               const testerName = tester ? tester.full_name : 'Unknown Tester';
               const testerEmail = tester ? tester.email : 'No email available';
               
@@ -744,49 +789,52 @@ export function InvitationManager() {
           </div>
           
           {/* Pagination controls */}
-          <div className="p-4 flex items-center justify-center space-x-2">
-            <button
-              onClick={() => changeInvitationPage(currentInvitationPage - 1)}
-              disabled={currentInvitationPage === 1}
-              className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <span className="text-sm text-gray-600 dark:text-gray-300">
-              Page {currentInvitationPage} of {Math.max(1, totalInvitationPages)}
-            </span>
-            <button
-              onClick={() => changeInvitationPage(currentInvitationPage + 1)}
-              disabled={currentInvitationPage === totalInvitationPages || totalInvitationPages === 0}
-              className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
-          </div>
+          {filteredInvitations.length > 0 && (
+            <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                    <span>Show</span>
+                    <select
+                        id="invitationsPerPage"
+                        value={invitationsPerPage}
+                        onChange={(e) => {
+                            setInvitationsPerPage(Number(e.target.value));
+                            setCurrentInvitationPage(1);
+                        }}
+                        className="px-2 py-1 border border-gray-200 dark:border-gray-600 rounded-md focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 dark:focus:ring-yellow-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    >
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span>entries</span>
+                    <span className="hidden sm:inline-block pl-4">
+                      Showing {indexOfFirstInvitation + 1}-{Math.min(indexOfLastInvitation, filteredInvitations.length)} of {filteredInvitations.length}
+                    </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => changeInvitationPage(currentInvitationPage - 1)}
+                      disabled={currentInvitationPage === 1}
+                      className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm text-gray-600 dark:text-gray-300">
+                      Page {currentInvitationPage} of {Math.max(1, totalInvitationPages)}
+                    </span>
+                    <button
+                      onClick={() => changeInvitationPage(currentInvitationPage + 1)}
+                      disabled={currentInvitationPage === totalInvitationPages || totalInvitationPages === 0}
+                      className="px-3 py-1 rounded-md border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

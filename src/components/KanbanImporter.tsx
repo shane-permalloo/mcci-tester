@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { MessageSquare, Bug, Lightbulb, MessageCircle, Calendar, Edit2, Save, X, Download, GripVertical, Upload, FileText, AlertCircle, DownloadIcon } from 'lucide-react';
+import { MessageSquare, Bug, Lightbulb, MessageCircle, Calendar, Edit2, Save, X, Download, GripVertical, Upload, FileText, AlertCircle, DownloadIcon, AlertTriangle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 type FeedbackType = 'bug_report' | 'suggestion' | 'general_comment';
@@ -69,9 +69,10 @@ export function KanbanImporter() {
   const [editingColumnTitle, setEditingColumnTitle] = useState<string | null>(null);
   const [columnTitleValue, setColumnTitleValue] = useState<string>('');
   const [isDragOver, setIsDragOver] = useState(false);
-
-  // Prevent default drag behaviors on document
-  React.useEffect(() => {
+  const [columnToDelete, setColumnToDelete] = useState<KanbanColumn | null>(null);
+ 
+   // Prevent default drag behaviors on document
+   React.useEffect(() => {
     const preventDefaults = (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
@@ -365,8 +366,30 @@ export function KanbanImporter() {
     setColumnTitleValue('');
   };
 
-  const startEditingEstimate = (feedbackId: string, currentEstimate: number) => {
-    setEditingEstimate(feedbackId);
+  const handleDeleteColumn = (columnId: string) => {
+    const column = columns.find(c => c.id === columnId);
+    if (column) {
+      setColumnToDelete(column);
+    }
+  };
+
+  const confirmDeleteColumn = () => {
+    if (!columnToDelete) return;
+
+    setFeedback(prev =>
+      prev.map(f =>
+        f.status === columnToDelete.id ? { ...f, status: 'to_discuss' } : f
+      )
+    );
+
+    const newColumns = columns.filter(c => c.id !== columnToDelete.id);
+    setColumns(newColumns);
+    
+    setColumnToDelete(null);
+  };
+ 
+   const startEditingEstimate = (feedbackId: string, currentEstimate: number) => {
+     setEditingEstimate(feedbackId);
     setEstimateValue(currentEstimate);
   };
 
@@ -467,6 +490,33 @@ export function KanbanImporter() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {columnToDelete && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-8 max-w-md w-full border border-gray-200 dark:border-gray-400">
+            <div className="flex flex-col items-center text-center">
+              <AlertTriangle className="h-16 w-16 text-yellow-500 dark:text-yellow-400 mb-4" />
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">Delete Column?</h2>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                Are you sure you want to delete the "{columnToDelete.title}" group? All feedback items in this group will be moved to the first group. This action cannot be undone.
+              </p>
+              <div className="flex justify-center gap-4">
+                <button
+                  onClick={() => setColumnToDelete(null)}
+                  className="px-6 py-2 rounded-md shadow-lg bg-gradient-to-r from-gray-400 to-gray-700 text-white hover:from-gray-500 hover:to-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteColumn}
+                  className="px-6 py-2 rounded-md shadow-lg bg-gradient-to-r from-red-500 to-red-700 text-white hover:from-red-600 hover:to-red-800 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
@@ -592,7 +642,7 @@ export function KanbanImporter() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className={`grid grid-cols-1 md:grid-cols-${columns.length} gap-4`}>
             {columns.map((column) => {
               const columnFeedback = getFeedbackByStatus(column.id);
               const isDropTarget = dragOverColumn === column.id;
@@ -620,7 +670,7 @@ export function KanbanImporter() {
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, column.id)}
                 >
-                  <div className="mb-4">
+                  <div className="mb-4 relative">
                     <div className={`font-semibold text-lg ${column.color} mb-2 flex items-center justify-between`}>
                       {editingColumnTitle === column.id ? (
                         <div className="flex items-center space-x-2 flex-1">
@@ -649,15 +699,23 @@ export function KanbanImporter() {
                           </button>
                         </div>
                       ) : (
-                        <>
-                          <span className="flex-1">{column.title}</span>
-                          <button
+                        <div className="flex-1 flex items-center">
+                          <span>{column.title}</span>
+                          <button title='Edit group title'
                             onClick={() => startEditingColumnTitle(column.id, column.title)}
-                            className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="ml-2 p-1 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <Edit2 className="h-3 w-3" />
                           </button>
-                        </>
+                          {(column.id === 'low' || column.id === 'high') && (
+                            <button title="Delete group"
+                              onClick={() => handleDeleteColumn(column.id)}
+                              className="ml-1 p-1 text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-5 w-5 absolute -top-2 -right-2" />
+                            </button>
+                          )}
+                        </div>
                       )}
                       {isDropTarget && isValidDrop && (
                         <div className="flex items-center space-x-1 text-blue-600 dark:text-blue-400 animate-pulse ml-2">

@@ -15,13 +15,12 @@ export function FeedbackDashboard() {
   const [deviceFilter, setDeviceFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   // Multi-select functionality
   const [selectedFeedback, setSelectedFeedback] = useState<string[]>([]);
   const [bulkStatus, setBulkStatus] = useState<FeedbackStatus>('to_discuss');
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  const itemsPerPage = 10;
 
   // Calculate pagination values
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -499,9 +498,27 @@ export function FeedbackDashboard() {
 
         {/* Pagination */}
         {filteredFeedback.length > itemsPerPage && (
-          <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredFeedback.length)} of {filteredFeedback.length} feedback items
+          <div className="px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+                <span>Show</span>
+                <select
+                    id="itemsPerPage"
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                    }}
+                    className="px-2 py-1 border border-gray-200 dark:border-gray-600 rounded-md focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                >
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+                <span>entries</span>
+                <span className="hidden sm:inline-block pl-4">
+                  Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredFeedback.length)} of {filteredFeedback.length}
+                </span>
             </div>
             <div className="flex items-center space-x-2">
               <button

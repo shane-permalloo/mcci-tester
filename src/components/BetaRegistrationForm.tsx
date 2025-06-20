@@ -134,7 +134,7 @@ export function BetaRegistrationForm() {
       if (error) throw error;
 
       setSubmitStatus('success');
-      setMessage('Thank you for joining our beta program! We\'ll be in touch with yousoon.');
+      setMessage('Thank you for joining our beta program! We\'ll be in touch with you soon.');
       setFormData({
         fullName: '',
         email: '',
