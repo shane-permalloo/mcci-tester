@@ -43,12 +43,11 @@ export const sendEmail = async (emailData: EmailData): Promise<boolean> => {
 
 export const generateInvitationEmailContent = (
   testerName: string,
-  platformName: string,
-  appName: string = 'MCCI Tax Refund System'
+  platformName: string
 ): string => {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2>You're Invited to Test ${appName}!</h2>
+      <h2>You're Invited to Test the new MCCI Tax Refund System Mobile App!</h2>
       
       <p>Hello ${testerName},</p>
       
@@ -102,8 +101,8 @@ export const generateInvitationEmailContent = (
           <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
             <p style="margin: 0 0 10px 0; font-weight: bold; color: #2c5530;">Step 4: Install the Beta App</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • You can search for the "${appName}" in the search bar<br>
-              • You should now see "${appName}" in the Play Store<br>
+              • You can search for the "MCCI Tax Refund System" in the search bar<br>
+              • You should now see the new MCCI Tax Refund System Mobile App in the Play Store<br>
               • Watch out for the "(Internal Beta)" label next to the app name<br>
               • Look for text saying "You're a beta tester for this app"<br>
               • Tap the <strong>"Install"</strong> button<br>
@@ -145,7 +144,7 @@ export const generateInvitationEmailContent = (
             <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 2: Check Your Email for TestFlight Invitation</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
               • Look for an email from "TestFlight" or "App Store Connect"<br>
-              • The subject will be something like "You're invited to test ${appName}"<br>
+              • The subject will be something like "You're invited to test the new MCCI Tax Refund System Mobile App"<br>
               • Open this email on your iPhone (not on a computer)
             </p>
           </div>
@@ -162,7 +161,7 @@ export const generateInvitationEmailContent = (
           <div style="background-color: white; padding: 15px; border-radius: 5px; margin-bottom: 10px;">
             <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 4: Install the Beta App</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • In TestFlight, you should see "${appName}" listed<br>
+              • In TestFlight, you should see the new MCCI Tax Refund System Mobile App listed<br>
               • Tap the <strong>"Install"</strong> button next to the app<br>
               • Wait for the download to complete (you'll see a progress circle)<br>
               • The app icon will appear on your home screen when ready
@@ -172,7 +171,7 @@ export const generateInvitationEmailContent = (
           <div style="background-color: white; padding: 15px; border-radius: 5px;">
             <p style="margin: 0 0 10px 0; font-weight: bold; color: #1a365d;">Step 5: Open and Use the App</p>
             <p style="margin: 0; font-size: 14px; line-height: 1.5;">
-              • Find the "${appName}" icon on your home screen and tap it<br>
+              • Find the the new MCCI Tax Refund System Mobile App icon on your home screen and tap it<br>
               • The app is now ready to use for testing!<br>
               • You'll see a small orange dot on the app icon indicating it's a beta version<br>
               • <em>You can also open it directly from TestFlight</em>
@@ -209,18 +208,17 @@ export const generateInvitationEmailContent = (
 
 export const generateFeedbackInvitationEmailContent = (
   testerName: string,
-  feedbackUrl: string,
-  appName: string = 'MCCI Tax Refund System'
+  feedbackUrl: string
 ): string => {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2>We Need Your Feedback on ${appName}!</h2>
+      <h2>We Need Your Feedback on the new MCCI Tax Refund System Mobile App!</h2>
       
       <p>Hello ${testerName},</p>
       
       <p>Thank you for being part of our beta testing program! Your experience and insights are invaluable to us.</p>
       
-      <p>We would love to hear about your experience using the <strong>${appName}</strong> app. Your feedback helps us improve the app and make it better for everyone.</p>
+      <p>We would love to hear about your experience using the <strong>the new MCCI Tax Refund System Mobile App</strong>. Your feedback helps us improve the app and make it better for everyone.</p>
       
       <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #F59E0B;">
         <h3 style="color: #333; margin-top: 0;">💬 Share Your Feedback</h3>
