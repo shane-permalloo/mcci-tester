@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { MessageSquare, Bug, Lightbulb, MessageCircle, Calendar, Edit2, Save, X, Download, GripVertical, Upload, FileText, AlertCircle } from 'lucide-react';
+import { MessageSquare, Bug, Lightbulb, MessageCircle, Calendar, Edit2, Save, X, Download, GripVertical, Upload, FileText, AlertCircle, DownloadIcon } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 type FeedbackType = 'bug_report' | 'suggestion' | 'general_comment';
@@ -470,10 +470,9 @@ export function KanbanImporter() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-blue-900 bg-clip-text text-transparent mb-2">
-              Kanban Importer
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-blue-800 bg-clip-text text-transparent mb-2">
+              Feedbacks collected
             </h1>
-            <p className="text-gray-600 dark:text-gray-300">Import feedback from CSV and manage with kanban board</p>
           </div>
         </div>
       </div>
@@ -481,13 +480,7 @@ export function KanbanImporter() {
       {!isUploaded ? (
         <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-lg rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-8">
           <div className="text-center">
-            <Upload className="h-16 w-16 text-blue-600 dark:text-blue-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">
-              Upload CSV File
-            </h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Upload a CSV file containing feedback data with columns: Type, Module, Title, Description, Status
-            </p>
+            
             
             <div 
               className={`mb-6 border-2 border-dashed rounded-lg p-8 transition-all duration-200 ${
@@ -520,7 +513,7 @@ export function KanbanImporter() {
                   </p>
                   <label
                     htmlFor="csv-upload"
-                    className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 dark:hover:from-blue-600 dark:hover:to-blue-700 focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all shadow-lg cursor-pointer"
+                    className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 dark:hover:from-blue-600 dark:hover:to-blue-700 focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-800 transition-all shadow-lg cursor-pointer transition-all duration-200"
                   >
                     <FileText className="h-5 w-5" />
                     <span>Choose CSV File</span>
@@ -538,14 +531,16 @@ export function KanbanImporter() {
               </div>
             )}
 
-            <div className="text-left bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+            <div className="text-left bg-gray-50 dark:bg-gray-100/10 bg-gray-300/10 border border-gray-200/80 dark:border-gray-600/80 rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-800 dark:text-gray-200">CSV Format Requirements:</h3>
+                <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200">CSV Format Requirements:</h3>
                 <button
                   onClick={downloadSampleCSV}
-                  className="text-xs px-3 py-1 bg-blue-600 dark:bg-blue-500 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors"
+                    className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-lg 
+                    hover:from-gray-500 hover:to-gray-600 focus:ring-2 focus:ring-gray-200 shadow-lg cursor-pointer transition-all duration-200"
                 >
-                  Download Sample
+                  <DownloadIcon className='h-5 w-5 mr-2' />
+                  Download CSV Sample
                 </button>
               </div>
               <ul className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
